@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/operator_bot
+    password: postgres
+    username: postgres
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
