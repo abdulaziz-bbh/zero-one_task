@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.support.JpaEntityInformation
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository
 import org.springframework.data.repository.NoRepositoryBean
 import org.springframework.data.repository.findByIdOrNull
+import org.springframework.stereotype.Repository
 
 @NoRepositoryBean
 interface BaseRepository<T : BaseEntity> : JpaRepository<T, Long>, JpaSpecificationExecutor<T> {
@@ -22,9 +23,10 @@ interface BaseRepository<T : BaseEntity> : JpaRepository<T, Long>, JpaSpecificat
     fun findAllNotDeletedForPageable(pageable: Pageable): Page<T>
     fun saveAndRefresh(t: T): T
 }
+
 class BaseRepositoryImpl<T : BaseEntity>(
-    entityInformation: JpaEntityInformation<T, Long>,
-    private val entityManager: EntityManager
+        entityInformation: JpaEntityInformation<T, Long>,
+        private val entityManager: EntityManager
 ) : SimpleJpaRepository<T, Long>(entityInformation, entityManager), BaseRepository<T> {
 
     val isNotDeletedSpecification = Specification<T> { root, _, cb -> cb.equal(root.get<Boolean>("deleted"), false) }
@@ -39,7 +41,7 @@ class BaseRepositoryImpl<T : BaseEntity>(
 
     override fun findAllNotDeleted(): List<T> = findAll(isNotDeletedSpecification)
     override fun findAllNotDeleted(pageable: Pageable): List<T> = findAll(isNotDeletedSpecification, pageable).content
-    override fun findAllNotDeletedForPageable(pageable: Pageable): Page<T> =findAll(isNotDeletedSpecification, pageable)
+    override fun findAllNotDeletedForPageable(pageable: Pageable): Page<T> = findAll(isNotDeletedSpecification, pageable)
 
     @Transactional
     override fun trashList(ids: List<Long>): List<T?> = ids.map { trash(it) }
@@ -50,3 +52,15 @@ class BaseRepositoryImpl<T : BaseEntity>(
         return save(t).apply { entityManager.refresh(this) }
     }
 }
+
+@Repository
+interface UserRepository : BaseRepository<UserEntity>
+
+@Repository
+interface MessageRepository : BaseRepository<MessagesEntity>
+
+@Repository
+interface RatingRepository : BaseRepository<RatingEntity>
+
+@Repository
+interface UserInquiriesRepository:BaseRepository<UserInquiries>
