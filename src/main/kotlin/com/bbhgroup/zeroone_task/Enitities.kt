@@ -3,6 +3,7 @@ package com.bbhgroup.zeroone_task
 import jakarta.persistence.*
 import org.hibernate.annotations.ColumnDefault
 import org.springframework.data.annotation.CreatedDate
+import org.telegram.telegrambots.meta.api.objects.MessageEntity
 import java.util.*
 
 @MappedSuperclass
@@ -15,30 +16,47 @@ abstract class BaseEntity(
 @Entity(name = "users")
 class UserEntity(
         val fullName: String,
-        val username: String,
+        @Column(nullable = false, unique = true)
         val phoneNumber: String,
-        val userId: Long,
+        @Column(nullable = false, unique = true)
+        val chatId: Long,
         @Enumerated(EnumType.STRING) val role: UserRole = UserRole.USER,
         @ElementCollection val language: Set<Languages>
 ) : BaseEntity()
 @Entity(name = "messages")
 class MessagesEntity(
-        val messageId: Long,
-        @ManyToOne val user: UserEntity,
-        val createdBy : Long
+        @ManyToOne
+        val client: UserEntity,
+        val text:String,
+        val fileId:Long,
+        val messageType: MessageType,
+        @ManyToOne
+        val session: Session
+
 ) : BaseEntity()
-@Entity(name = "users_inquiries")
-class UserInquiries(
-        @OneToMany val messages: List<MessagesEntity> = mutableListOf(),
-        @ManyToOne val user: UserEntity,
-        @Enumerated(EnumType.STRING) val status: InquiriesStatus = InquiriesStatus.PENDING,
-        val createdBy : Long
-) : BaseEntity()
+
+@Entity
+class QueueEntity(
+        @ManyToOne
+        val client: UserEntity,
+        @OneToMany
+        val messages: Queue<MessagesEntity>,
+        val position: Int
+): BaseEntity()
+
 @Entity(name = "rates")
 class RatingEntity(
         val rate: Int,
-        val description: String,
-        @ManyToOne val user: UserEntity,
-        @ManyToOne val operatorId: UserEntity,
-        @ManyToOne val userInquiries: UserInquiries
+        @ManyToOne val client: UserEntity,
+        @ManyToOne val operator: UserEntity,
+        @OneToOne val session: Session
 ) : BaseEntity()
+
+@Entity
+class Session(
+        @ManyToOne
+        val client: UserEntity,
+        @ManyToOne
+        val operator: UserEntity,
+        val active: Boolean
+): BaseEntity()

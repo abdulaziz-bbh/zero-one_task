@@ -57,10 +57,13 @@ class BaseRepositoryImpl<T : BaseEntity>(
 interface UserRepository : BaseRepository<UserEntity>
 
 @Repository
+interface SessionRepository : BaseRepository<Session>
+
+@Repository
+interface QueueRepository : BaseRepository<QueueEntity>
+
+@Repository
 interface MessageRepository : BaseRepository<MessagesEntity>
 
 @Repository
 interface RatingRepository : BaseRepository<RatingEntity>
-
-@Repository
-interface UserInquiriesRepository:BaseRepository<UserInquiries>
