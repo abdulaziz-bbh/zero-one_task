@@ -20,9 +20,11 @@ class UserEntity(
         val phoneNumber: String,
         @Column(nullable = false, unique = true)
         val chatId: Long,
-        @Enumerated(EnumType.STRING) val role: UserRole = UserRole.USER,
+        @Enumerated(EnumType.STRING) val role: Role = Role.USER,
         @ElementCollection val language: Set<Languages>
 ) : BaseEntity()
+
+
 @Entity(name = "messages")
 class MessagesEntity(
         @ManyToOne
