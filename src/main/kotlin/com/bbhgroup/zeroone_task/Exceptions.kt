@@ -19,7 +19,7 @@ sealed class BillingExceptionHandler() : RuntimeException() {
     }
 }
 
-class UserAlreadyExistsException : BillingExceptionHandler() {
+class UserHasAlreadyExistsException : BillingExceptionHandler() {
     override fun errorCode(): ErrorCodes {
         return ErrorCodes.USER_ALREADY_EXISTS
     }
@@ -29,6 +29,9 @@ class UserNotFoundException : BillingExceptionHandler() {
     override fun errorCode(): ErrorCodes {
         return ErrorCodes.USER_NOT_FOUND
     }
+}
+class UserBadRequestException: BillingExceptionHandler(){
+    override fun errorCode()= ErrorCodes.USER_BAD_REQUEST
 }
 
 

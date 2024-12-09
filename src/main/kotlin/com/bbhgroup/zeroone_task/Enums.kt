@@ -1,5 +1,16 @@
 package com.bbhgroup.zeroone_task
 
+
+enum class ErrorCodes(val code:Int) {
+
+    USER_NOT_FOUND(100),
+    USER_ALREADY_EXISTS(101),
+    USER_BAD_REQUEST(102)
+
+}
+
+
+
 enum class Role{
     USER,ADMIN,OPERATOR
 }
@@ -8,29 +19,6 @@ enum class Languages(val key:String){
     UZ("uz"),
     RU("ru"),
     ENG("en")
-}
-
-enum class InquiriesStatus{
-    PENDING,
-    COMPLETED
-}
-
-
-
-
-enum class ErrorCodes(val code:Int) {
-
-    USER_NOT_FOUND(100),
-    USER_ALREADY_EXISTS(101)
-
-}
-enum class BotSteps{
-
-    START,
-    SELECT_LANGUAGE,
-    INPUT_FULLNAME,
-    INPUT_PHONE_NUMBER,
-
 }
 
 enum class MessageType{
