@@ -18,9 +18,6 @@ enum class InquiriesStatus {
 
 enum class ErrorCodes(val code: Int) {
 
-    USER_NOT_FOUND(100),
-    USER_ALREADY_EXISTS(101),
-
 
     INVALID_MESSAGE_TEXT(1),
     INVALID_FILE_ID(2),
@@ -36,10 +33,6 @@ enum class ErrorCodes(val code: Int) {
     QUE_NOT_FOUND(32),
     QUE_OWNER_EXCEPTION(33),
     INVALID_MESSAGE_TYPE(34),
-
-}
-
-enum class BotSteps {
     USER_NOT_FOUND(100),
     USER_ALREADY_EXISTS(101),
     USER_BAD_REQUEST(102)
@@ -51,17 +44,6 @@ enum class BotSteps{
     SELECT_LANGUAGE,
     SHARE_CONTACT
 
-}
-
-  
-enum class Role{
-    USER,ADMIN,OPERATOR
-}
-
-enum class Languages(val key:String){
-    UZ("uz"),
-    RU("ru"),
-    ENG("en")
 }
 
 enum class MessageType{
