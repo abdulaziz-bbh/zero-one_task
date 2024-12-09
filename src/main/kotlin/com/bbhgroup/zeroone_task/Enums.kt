@@ -9,7 +9,12 @@ enum class ErrorCodes(val code:Int) {
 
 }
 
+enum class BotSteps{
+    START,
+    SELECT_LANGUAGE,
+    SHARE_CONTACT
 
+}
 
 enum class Role{
     USER,ADMIN,OPERATOR
