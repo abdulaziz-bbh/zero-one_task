@@ -28,8 +28,7 @@ enum class BotSteps{
 
     START,
     SELECT_LANGUAGE,
-    INPUT_FULLNAME,
-    INPUT_PHONE_NUMBER,
+    SHARE_CONTACT
 
 }
 
