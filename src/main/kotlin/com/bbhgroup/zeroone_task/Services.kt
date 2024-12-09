@@ -7,11 +7,12 @@ import java.util.*
 
 interface UserService {}
 interface MessageService {
-    fun saveClientMessages(queueClientId: Long, sessionId: Long)
-    fun saveOperatorMessage(request: MessageDto)
+    fun saveClientQueueMessages(queueClientId: Long, sessionId: Long)
+    fun saveClientOperatorMessage(request: MessageDto)
     fun deleteMessage(id: Long, clientId: Long)
-    fun findAllByClientId(clientId: Long): List<MessageResponse>
-    fun findAllByOperatorId(operatorId: Long): List<MessageResponse>
+    fun findAllBySessionId(sessionId: Long): MessageSessionResponse
+    fun findAllByClientId(clientId: Long): List<MessageSessionResponse>
+    fun findAllByOperatorId(operatorId: Long): List<MessageSessionResponse>
 }
 
 interface SessionService {}
@@ -110,41 +111,79 @@ class MessageServiceImpl(
 ) : MessageService {
 
     @Transactional
-    override fun saveClientMessages(queueClientId: Long, sessionId: Long) {
+    override fun saveClientQueueMessages(queueClientId: Long, sessionId: Long) {
         val queueList = queueRepository.findAllByClientIdAndDeletedFalseOrderByCreatedAtAsc(queueClientId)
         if (queueList.isEmpty()) throw EmptyListMException()
         val session = sessionRepository.findByIdAndDeletedFalse(sessionId) ?: throw SessionNotFoundMException()
         if (session.client.id != queueClientId) throw InvalidSessionClientIdException()
-        queueList.forEach {
+        queueList.forEach { queue ->
             messageRepository.save(
                 MessagesEntity(
-                    it.client,
-                    it.text,
-                    it.fileId,
-                    it.messageType,
+                    queue.client,
+                    queue.text,
+                    queue.fileId,
+                    queue.messageType,
                     session
                 )
             )
+            queueRepository.trash(queue.id!!)
         }
     }
 
-    override fun saveOperatorMessage(request: MessageDto) {
-        val operator = userRepository.findByIdAndDeletedFalse(request.operatorId) ?: throw UserNotFoundException()
+    @Transactional
+    override fun saveClientOperatorMessage(request: MessageDto) {
+        val clientOrOperator =
+            userRepository.findByIdAndDeletedFalse(request.clientOrOperatorId) ?: throw UserNotFoundException()
         val session = sessionRepository.findByIdAndDeletedFalse(request.sessionId) ?: throw SessionNotFoundMException()
-        if (session.operator.id != operator.id) throw InvalidSessionClientIdException()
+        if (
+            session.operator.id != clientOrOperator.id ||
+            session.client.id != clientOrOperator.id
+        ) throw InvalidSessionClientIdException()
 
+        if (request.text != null && request.messageType != MessageType.TEXT) throw InvalidMessageTypeException()
+        if (request.fileId != null && request.messageType == MessageType.TEXT) throw InvalidMessageTypeException()
+        var replyMessage: MessagesEntity? = null
+
+        request.replyMessageId?.let {
+            replyMessage = messageRepository.findByIdAndDeletedFalse(it) ?: throw MessageNotFoundException()
+        }
+        messageRepository.save(request.toEntity(clientOrOperator, session, replyMessage))
     }
 
+    @Transactional
     override fun deleteMessage(id: Long, clientId: Long) {
-        TODO("Not yet implemented")
+        val message = messageRepository.findByIdAndDeletedFalse(id) ?: throw MessageNotFoundException()
+        if (message.session.client.id != clientId || message.session.operator.id != clientId) throw InvalidSessionClientIdException()
+        messageRepository.trash(id)
     }
 
-    override fun findAllByClientId(clientId: Long): List<MessageResponse> {
-        TODO("Not yet implemented")
+    override fun findAllBySessionId(sessionId: Long): MessageSessionResponse {
+        val session = sessionRepository.findByIdAndDeletedFalse(sessionId) ?: throw SessionNotFoundMException()
+
+        val messageList = messageRepository.findAllBySessionIdAndDeletedFalseOrderByCreatedAtAsc(sessionId)
+        if (messageList.isEmpty()) throw EmptyListMException()
+
+        return MessageSessionResponse.toResponse(session, messageList)
     }
 
-    override fun findAllByOperatorId(operatorId: Long): List<MessageResponse> {
-        TODO("Not yet implemented")
+    override fun findAllByClientId(clientId: Long): List<MessageSessionResponse> {
+        val sessionList = sessionRepository.findAllByClientIdAndDeletedFalseOrderByCreatedAtDesc(clientId)
+        if (sessionList.isEmpty()) throw EmptyListMException()
+
+        return sessionList.map { session ->
+            val messageList = messageRepository.findAllBySessionIdAndDeletedFalseOrderByCreatedAtAsc(session.id!!)
+            MessageSessionResponse.toResponse(session, messageList)
+        }.toList()
+    }
+
+    override fun findAllByOperatorId(operatorId: Long): List<MessageSessionResponse> {
+        val sessionList = sessionRepository.findAllByOperatorIdAndDeletedFalseOrderByCreatedAtDesc(operatorId )
+        if (sessionList.isEmpty()) throw EmptyListMException()
+
+        return sessionList.map { session ->
+            val messageList = messageRepository.findAllBySessionIdAndDeletedFalseOrderByCreatedAtAsc(session.id!!)
+            MessageSessionResponse.toResponse(session, messageList)
+        }.toList()
     }
 }
 

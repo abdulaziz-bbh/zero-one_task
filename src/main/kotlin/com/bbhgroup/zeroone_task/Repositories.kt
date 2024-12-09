@@ -58,7 +58,10 @@ class BaseRepositoryImpl<T : BaseEntity>(
 interface UserRepository : BaseRepository<UserEntity>
 
 @Repository
-interface SessionRepository : BaseRepository<Session>
+interface SessionRepository : BaseRepository<Session>{
+    fun findAllByClientIdAndDeletedFalseOrderByCreatedAtDesc(clientId: Long): List<Session>
+    fun findAllByOperatorIdAndDeletedFalseOrderByCreatedAtDesc(operatorId: Long): List<Session>
+}
 
 @Repository
 interface QueueRepository : BaseRepository<QueueEntity> {
@@ -67,7 +70,9 @@ interface QueueRepository : BaseRepository<QueueEntity> {
 }
 
 @Repository
-interface MessageRepository : BaseRepository<MessagesEntity>
+interface MessageRepository : BaseRepository<MessagesEntity> {
+    fun findAllBySessionIdAndDeletedFalseOrderByCreatedAtAsc(sessionId: Long): List<MessagesEntity>
+}
 
 @Repository
 interface RatingRepository : BaseRepository<RatingEntity>

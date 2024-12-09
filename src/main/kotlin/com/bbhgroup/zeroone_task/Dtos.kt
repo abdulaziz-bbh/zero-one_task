@@ -21,16 +21,16 @@ data class UpdateMessageQueueDto(
 )
 
 data class MessageDto(
-    val operatorId: Long,
+    val clientOrOperatorId: Long,
     val text: String?,
     val messageType: MessageType,
     val sessionId: Long,
     val replyMessageId: Long?,
     val fileId: Long? = null,
 ) {
-    fun toResponse(operator: UserEntity, session: Session, replyMessage: MessagesEntity?): MessagesEntity {
+    fun toEntity(clientOrOperator: UserEntity, session: Session, replyMessage: MessagesEntity?): MessagesEntity {
         return MessagesEntity(
-            operator,
+            clientOrOperator,
             text,
             fileId,
             messageType,
