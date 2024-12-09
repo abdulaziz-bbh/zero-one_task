@@ -1,5 +1,7 @@
 package com.bbhgroup.zeroone_task
 
+import jakarta.annotation.Nonnull
+
 
 data class BaseMessage(val code: Int, val message: String?)
 
@@ -79,3 +81,27 @@ data class UserUpdateRequest(
         var phoneNumber: String?,
         var language: Set<Languages>?
 )
+
+
+data class RatingCreateRequest(
+    val rate: Int,
+    val clientId: Long,
+    val operatorId: Long,
+    val sessionId: Long
+) : BaseEntity()
+
+data class RatingResponse(
+    override var id: Long?,
+    var rate: Int?,
+    val clientName: String?,
+    val operatorName: String?,
+    var sessionId: Long?
+) : BaseEntity()
+
+data class RatingUpdateRequest(
+    var rate: Int
+) : BaseEntity()
+
+
+
+

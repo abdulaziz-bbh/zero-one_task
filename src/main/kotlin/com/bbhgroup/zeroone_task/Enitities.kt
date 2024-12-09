@@ -48,13 +48,13 @@ class QueueEntity(
 
 @Entity(name = "rates")
 class RatingEntity(
-    val rate: Int,
+    var rate: Int,
     @ManyToOne val client: UserEntity,
     @ManyToOne val operator: UserEntity,
     @OneToOne val session: Session
 ) : BaseEntity()
 
-@Entity
+@Entity(name = "sessions")
 class Session(
     @ManyToOne
     val client: UserEntity,

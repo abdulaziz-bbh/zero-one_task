@@ -92,6 +92,32 @@ class InvalidMessageTypeException : BillingExceptionHandler() {
     override fun errorCode() = ErrorCodes.INVALID_MESSAGE_TYPE
 }
 
+class OperatorNotFoundException : BillingExceptionHandler() {
+    override fun errorCode(): ErrorCodes {
+        return ErrorCodes.OPERATOR_NOT_FOUND
+    }
+}
+
+class SessionNotFoundException : BillingExceptionHandler() {
+    override fun errorCode(): ErrorCodes {
+        return ErrorCodes.SESSION_NOT_FOUND
+    }
+}
+
+
+class RatingAlreadyExistsException : BillingExceptionHandler() {
+    override fun errorCode(): ErrorCodes {
+        return ErrorCodes.RATING_ALREADY_EXISTS
+    }
+}
+
+class RatingNotFoundException : BillingExceptionHandler() {
+    override fun errorCode(): ErrorCodes {
+        return ErrorCodes.RATING_NOT_FOUND
+    }
+}
+
+
 
 
 
