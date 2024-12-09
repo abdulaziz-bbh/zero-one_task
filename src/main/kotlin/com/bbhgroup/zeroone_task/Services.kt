@@ -129,7 +129,10 @@ class MessageServiceImpl(
     }
 
     override fun saveOperatorMessage(request: MessageDto) {
-        TODO("Not yet implemented")
+        val operator = userRepository.findByIdAndDeletedFalse(request.operatorId) ?: throw UserNotFoundException()
+        val session = sessionRepository.findByIdAndDeletedFalse(request.sessionId) ?: throw SessionNotFoundMException()
+        if (session.operator.id != operator.id) throw InvalidSessionClientIdException()
+
     }
 
     override fun deleteMessage(id: Long, clientId: Long) {
