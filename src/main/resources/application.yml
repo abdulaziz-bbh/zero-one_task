@@ -1,9 +1,8 @@
 spring:
   datasource:
-    driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/zero_one
-    username: ZeroOne
-    password: Zer00ne!@
+    url: jdbc:postgresql://localhost:5432/operator_bot
+    password: postgres
+    username: postgres
   jpa:
     hibernate:
       ddl-auto: update
@@ -11,4 +10,5 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
 
