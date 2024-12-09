@@ -25,8 +25,8 @@ interface BaseRepository<T : BaseEntity> : JpaRepository<T, Long>, JpaSpecificat
 }
 
 class BaseRepositoryImpl<T : BaseEntity>(
-        entityInformation: JpaEntityInformation<T, Long>,
-        private val entityManager: EntityManager
+    entityInformation: JpaEntityInformation<T, Long>,
+    private val entityManager: EntityManager
 ) : SimpleJpaRepository<T, Long>(entityInformation, entityManager), BaseRepository<T> {
 
     val isNotDeletedSpecification = Specification<T> { root, _, cb -> cb.equal(root.get<Boolean>("deleted"), false) }
@@ -41,7 +41,8 @@ class BaseRepositoryImpl<T : BaseEntity>(
 
     override fun findAllNotDeleted(): List<T> = findAll(isNotDeletedSpecification)
     override fun findAllNotDeleted(pageable: Pageable): List<T> = findAll(isNotDeletedSpecification, pageable).content
-    override fun findAllNotDeletedForPageable(pageable: Pageable): Page<T> = findAll(isNotDeletedSpecification, pageable)
+    override fun findAllNotDeletedForPageable(pageable: Pageable): Page<T> =
+        findAll(isNotDeletedSpecification, pageable)
 
     @Transactional
     override fun trashList(ids: List<Long>): List<T?> = ids.map { trash(it) }
@@ -60,7 +61,10 @@ interface UserRepository : BaseRepository<UserEntity>
 interface SessionRepository : BaseRepository<Session>
 
 @Repository
-interface QueueRepository : BaseRepository<QueueEntity>
+interface QueueRepository : BaseRepository<QueueEntity> {
+    fun findFirstByDeletedFalseOrderByPositionAsc(): QueueEntity?
+    fun findAllByClientIdAndDeletedFalseOrderByCreatedAtAsc(clientId: Long): List<QueueEntity>
+}
 
 @Repository
 interface MessageRepository : BaseRepository<MessagesEntity>

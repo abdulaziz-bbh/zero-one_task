@@ -1,8 +1,9 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/telegram_bot
-    password: postgres
-    username: postgres
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/zero_one
+    username: ZeroOne
+    password: Zer00ne!@
   jpa:
     hibernate:
       ddl-auto: update
