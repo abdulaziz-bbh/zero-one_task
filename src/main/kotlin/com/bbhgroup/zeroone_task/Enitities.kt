@@ -17,10 +17,10 @@ abstract class BaseEntity(
 class UserEntity(
         val fullName: String,
         @Column(nullable = false, unique = true)
-        val phoneNumber: String,
+        var phoneNumber: String,
         @Column(nullable = false, unique = true)
         val chatId: Long,
-        @Enumerated(EnumType.STRING) val role: Role = Role.USER,
+        @Enumerated(EnumType.STRING) var role: Role = Role.USER,
         @ElementCollection val language: Set<Languages>
 ) : BaseEntity()
 
