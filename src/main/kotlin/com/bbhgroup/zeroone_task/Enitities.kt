@@ -20,6 +20,7 @@ class UserEntity(
     @Column(nullable = false, unique = true)
     val chatId: Long,
     @Enumerated(EnumType.STRING) var role: Role = Role.USER,
+    val botSteps: BotSteps=BotSteps.START,
     @ElementCollection val language: Set<Languages>
 ):BaseEntity()
 
@@ -54,11 +55,13 @@ class RatingEntity(
     @OneToOne val session: Session
 ) : BaseEntity()
 
-@Entity
+@Entity(name = "sessions")
 class Session(
     @ManyToOne
     val client: UserEntity,
     @ManyToOne
     val operator: UserEntity,
-    val active: Boolean
+    val active: Boolean=true,
+    val rate : Int,
+    val commentForRate: String
 ) : BaseEntity()

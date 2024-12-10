@@ -62,18 +62,23 @@ interface UserRepository : BaseRepository<UserEntity> {
     fun findUserEntityByChatIdAndDeletedFalse(chatId: Long): UserEntity?
     @Query("select u from users as u where u.deleted=false and u.phoneNumber=:phoneNumber and u.id=:id")
     fun findUserEntityByPhoneNumberAndDeletedFalse(id: Long, phoneNumber: String): UserEntity?
-    @Query("select u from users u where u.role=:role and u.createdAt between :startTime and :endTime")
+    @Query("select u from users u where u.deleted=false and u.role=:role and u.createdAt between :startTime and :endTime")
     fun findByRoleAndCreatedAtBetween(role:Role ,startTime: LocalDateTime, endTime: LocalDateTime, pageable: Pageable): Page<UserEntity>
     @Query("select u from users as u where u.deleted=false and u.role=:role")
     fun findUserEntityByRoleAndDeletedFalse(role: Role, pageable: Pageable):Page<UserEntity>
-    @Query("select u from users u where u.createdAt between :startTime and :endTime")
+    @Query("select u from users u where u.deleted=false and u.createdAt between :startTime and :endTime")
     fun findUserEntityByCreatedAtBetween(startTime: LocalDateTime, endTime: LocalDateTime, pageable: Pageable):Page<UserEntity>
+    @Query("select u from users as u where u.deleted=false and u.id=:id and u.role=:role")
+    fun findUserEntityByIdAndRoleAndDeletedFalse(id: Long,role: Role):UserEntity?
+
 }
 
 @Repository
 interface SessionRepository : BaseRepository<Session>{
     fun findAllByClientIdAndDeletedFalseOrderByCreatedAtDesc(clientId: Long): List<Session>
     fun findAllByOperatorIdAndDeletedFalseOrderByCreatedAtDesc(operatorId: Long): List<Session>
+    @Query("select s from sessions as s where s.deleted=false and s.createdAt between :startTime and :endTime ")
+    fun findSessionByCreatedAtBetween(startTime: LocalDateTime, endTime: LocalDateTime,pageable: Pageable):Page<Session>
 }
 
 @Repository
