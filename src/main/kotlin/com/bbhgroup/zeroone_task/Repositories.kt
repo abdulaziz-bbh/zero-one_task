@@ -77,12 +77,6 @@ interface SessionRepository : BaseRepository<Session>{
 }
 
 @Repository
-interface QueueRepository : BaseRepository<QueueEntity> {
-    fun findFirstByDeletedFalseOrderByPositionAsc(): QueueEntity?
-    fun findAllByClientIdAndDeletedFalseOrderByCreatedAtAsc(clientId: Long): List<QueueEntity>
-}
-
-@Repository
 interface MessageRepository : BaseRepository<MessagesEntity> {
     fun findAllBySessionIdAndDeletedFalseOrderByCreatedAtAsc(sessionId: Long): List<MessagesEntity>
 }
