@@ -351,7 +351,7 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
 
         override fun update(id: Long, request: RatingUpdateRequest) {
             val rating = ratingRepository.findByIdAndDeletedFalse(id) ?: throw RatingNotFoundException()
-            request.rate.let { rating.rate }
+            request.rate.let { rating.rate = it }
             ratingRepository.save(ratingMapper.updateEntity(rating, request))
         }
 
