@@ -14,13 +14,13 @@ class DataLoader(
 
     private fun loadAdmin() {
         val adminPhoneNumber = "905969167"
-        if (userRepository.countByRole(Role.ADMIN) == 0L && userRepository.findByPhoneNumber(adminPhoneNumber) == null) {
+        if (userRepository.countByRole(Role.ADMIN) == 0L && userRepository.findByPhoneNumberAndDeletedFalse(adminPhoneNumber) == null) {
             val admin = UserEntity(
                 fullName = "John Doe",
                 phoneNumber = adminPhoneNumber,
                 chatId = 999999999L,
                 role = Role.ADMIN,
-                language = setOf(Languages.ENG)
+                language = setOf(Languages.EN)
             )
             userRepository.save(admin)
             println("Admin user loaded")

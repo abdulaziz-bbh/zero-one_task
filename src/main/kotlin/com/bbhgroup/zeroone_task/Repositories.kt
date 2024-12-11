@@ -68,6 +68,8 @@ interface UserRepository : BaseRepository<UserEntity> {
     and u.role = 'USER'
 """)
     fun existsByClientId(@Param("id") id: Long?): Boolean
+    fun findByPhoneNumberAndDeletedFalse(phoneNumber: String): UserEntity?
+
 
     @Query("""
     select count(u) > 0 
@@ -97,7 +99,7 @@ interface UserRepository : BaseRepository<UserEntity> {
 interface SessionRepository : BaseRepository<Session>{
 
     @Query("""
-        select s from Session s where s.user.chatId = :chatId and s.isActive = true
+        select s from sessions s where s.client.chatId = :chatId and s.isActive = true
     """)
     fun findByChatIdAndIsActiveTrue(chatId: Long): Session?
     fun findAllByClientIdAndDeletedFalseOrderByCreatedAtDesc(clientId: Long): List<Session>
@@ -108,12 +110,6 @@ interface SessionRepository : BaseRepository<Session>{
     where s.id = :id
 """)
     fun existsBySessionId(@Param("id") id: Long?): Boolean
-}
-
-@Repository
-interface QueueRepository : BaseRepository<QueueEntity> {
-    fun findFirstByDeletedFalseOrderByPositionAsc(): QueueEntity?
-    fun findAllByClientIdAndDeletedFalseOrderByCreatedAtAsc(clientId: Long): List<QueueEntity>
     @Query("select s from sessions as s where s.deleted=false and s.createdAt between :startTime and :endTime ")
     fun findSessionByCreatedAtBetween(startTime: LocalDateTime, endTime: LocalDateTime,pageable: Pageable):Page<Session>
 }
@@ -121,9 +117,4 @@ interface QueueRepository : BaseRepository<QueueEntity> {
 @Repository
 interface MessageRepository : BaseRepository<MessagesEntity> {
     fun findAllBySessionIdAndDeletedFalseOrderByCreatedAtAsc(sessionId: Long): List<MessagesEntity>
-}
-
-@Repository
-interface RatingRepository : BaseRepository<RatingEntity>{
-
 }
