@@ -83,25 +83,7 @@ data class UserUpdateRequest(
 )
 
 
-data class RatingCreateRequest(
-    val rate: Int,
-    val clientId: Long,
-    val operatorId: Long,
-    val sessionId: Long
-) : BaseEntity()
-
-data class RatingResponse(
-    override var id: Long?,
-    var rate: Int?,
-    val clientName: String?,
-    val operatorName: String?,
-    var sessionId: Long?
-) : BaseEntity()
-
-data class RatingUpdateRequest(
-    var rate: Int
-) : BaseEntity()
-
+ 
 
 
 
