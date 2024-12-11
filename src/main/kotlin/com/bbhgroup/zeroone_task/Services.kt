@@ -8,7 +8,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.*
 
-
 interface UserService {
     fun create(request: UserCreateRequest)
     fun getOne(id: Long): UserResponse
@@ -24,6 +23,7 @@ interface UserService {
     fun changeRole(id: Long, role: String)
 }
 
+
 interface MessageService {
     fun saveClientOperatorMessage(request: MessageDto)
     fun deleteMessage(id: Long, clientId: Long)
@@ -32,10 +32,46 @@ interface MessageService {
     fun findAllByOperatorId(operatorId: Long): List<MessageSessionResponse>
 }
 
-interface SessionService {}
+interface SessionService {
+    fun create(request: SessionCreateRequest)
+    fun getOne( id: Long):SessionResponse
+    fun deleteOne(id: Long)
+    fun getAll(startTime: String?,
+               endTime: String?,
+               pageable: Pageable):Page<SessionResponse>
+}
+interface QueueService {
+    fun saveQueueMessage(request: MessageQueueDto)
+    fun updateQueueMessage(id: Long, clientId: Long, request: UpdateMessageQueueDto)
+    fun deleteQueueMessage(id: Long, clientId: Long)
+    fun findAllByClientId(clientId: Long): MessageQueueResponse
+    fun findFirstQueueClientId(): Long
+}
 
+interface UserService {
+        fun create(request: UserCreateRequest)
+        fun getOne(id: Long): UserResponse
+        fun deleteOne(id: Long)
+        fun getAll(
+            role: String?,
+            startTime: String?,
+            endTime: String?,
+            pageable: Pageable
+        ): Page<UserResponse>
 
-interface RatingService {}
+        fun update(id: Long, request: UserUpdateRequest)
+        fun changeRole(id: Long, role: String)
+    }
+
+    @Service
+    class UserServiceImpl(private val userRepository: UserRepository) : UserService {
+        override fun create(request: UserCreateRequest) {
+            request.run {
+                val user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)
+                if (user != null) throw UserHasAlreadyExistsException()
+                userRepository.save(this.toEntity(Role.USER, BotSteps.START))
+            }
+        }
 
 
 @Service
@@ -183,11 +219,57 @@ class MessageServiceImpl(
             MessageSessionResponse.toResponse(session, messageList)
         }.toList()
     }
-}
 
+    @Service
+    class SessionServiceImpl(
+            private val sessionRepository: SessionRepository,
+            private val userRepository: UserRepository
+    ) : SessionService {
+        @Transactional
+        override fun create(request: SessionCreateRequest) {
+            val user = userRepository.findByIdAndDeletedFalse(request.userId)?:throw UserNotFoundException()
+            val operator = userRepository.findUserEntityByIdAndRoleAndDeletedFalse(request.operatorId,Role.OPERATOR)
+                    ?: throw UserNotFoundException()
+            val session = Session(
+                    client = user,
+                    operator = operator,
+                    active = true,
+                    rate = request.rate,
+                    commentForRate = request.commentForRate
+            )
+            sessionRepository.save(session)
+        }
 
-@Service
-class SessionServiceImpl(private val sessionRepository: SessionRepository) : SessionService {}
+        override fun getOne(id: Long): SessionResponse {
+            return sessionRepository.findByIdAndDeletedFalse(id)?.let {
+                SessionResponse.toResponse(it)
+            }?:throw SessionNotFoundMException()
+        }
 
-@Service
-class RatingServiceImpl(private val ratingRepository: RatingRepository) : RatingService {}
+        override fun deleteOne(id: Long) {
+            sessionRepository.trash(id)?:throw SessionNotFoundMException()
+        }
+
+        override fun getAll(startTime: String?,
+                            endTime: String?,
+                            pageable: Pageable): Page<SessionResponse> {
+            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+            val start = startTime?.let { LocalDate.parse(it, formatter).atStartOfDay() }
+            val end = endTime?.let { LocalDate.parse(it, formatter).atTime(23, 59, 59) }
+            val sessions = when {
+                start != null && end != null ->
+                    sessionRepository.findSessionByCreatedAtBetween(start, end, pageable)
+                else ->
+                    sessionRepository.findAllNotDeletedForPageable(pageable)
+            }
+            return sessions.map { session ->
+                SessionResponse(
+                        id = session.id ?: throw IllegalStateException("Session ID cannot be null"),
+                        userId = UserResponse.toResponse(session.client),
+                        operatorId = UserResponse.toResponse(session.operator),
+                        active = true
+                )
+            }
+        }
+    }
+

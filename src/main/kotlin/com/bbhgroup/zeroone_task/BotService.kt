@@ -93,7 +93,7 @@ class BotService(
     private fun sendLanguageButtons(chatId: Long) {
         val message = SendMessage().apply {
             this.chatId = chatId.toString()
-            text = "Tilni tanlang:"
+            text = "Tilni tanlang/Choose language/Выберите язык:"
             replyMarkup = InlineKeyboardMarkup().apply {
                 keyboard = listOf(
                     listOf(

@@ -23,7 +23,6 @@ class UserEntity(
         @ElementCollection @Enumerated(EnumType.STRING) val language: Set<Languages>
 ) : BaseEntity()
 
-
 @Entity(name = "messages")
 class MessagesEntity(
         @ManyToOne
@@ -47,11 +46,13 @@ class RatingEntity(
     @OneToOne val session: Session
 ) : BaseEntity()
 
-@Entity
+@Entity(name = "sessions")
 class Session(
-        @ManyToOne
-        val client: UserEntity,
-        var isActive: Boolean,
-        @ManyToOne
-        val operator: UserEntity? = null
-): BaseEntity()
+    @ManyToOne
+    val client: UserEntity,
+    @ManyToOne
+    val operator: UserEntity,
+    val active: Boolean=true,
+    val rate : Int,
+    val commentForRate: String
+) : BaseEntity()

@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/operator_bot
+    url: jdbc:postgresql://localhost:5432/taskbot
     password: postgres
     username: postgres
   jpa:
@@ -10,4 +10,5 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
 
