@@ -21,7 +21,7 @@ class UserEntity(
         @Column(nullable = false, unique = true)
         val chatId: Long,
         @Enumerated(EnumType.STRING) var role: Role = Role.USER,
-        @ElementCollection val language: Set<Languages>
+        @ElementCollection @Enumerated(EnumType.STRING) val language: Set<Languages>
 ) : BaseEntity()
 
 
@@ -29,22 +29,16 @@ class UserEntity(
 class MessagesEntity(
         @ManyToOne
         val client: UserEntity,
-        val text:String,
-        val fileId:Long,
+        val text: String? = null,
+        val fileId: String? = null,
+        val mediaUrl: String? = null,
+        val messageId: Int? = null,
+        val replyToMessageId: Int? = null,
+        @Enumerated(EnumType.STRING)
         val messageType: MessageType,
         @ManyToOne
         val session: Session
-
 ) : BaseEntity()
-
-@Entity
-class QueueEntity(
-        @ManyToOne
-        val client: UserEntity,
-        @OneToMany
-        val messages: Queue<MessagesEntity>,
-        val position: Int
-): BaseEntity()
 
 @Entity(name = "rates")
 class RatingEntity(
@@ -58,7 +52,7 @@ class RatingEntity(
 class Session(
         @ManyToOne
         val client: UserEntity,
+        var isActive: Boolean,
         @ManyToOne
-        val operator: UserEntity,
-        val active: Boolean
+        val operator: UserEntity? = null
 ): BaseEntity()

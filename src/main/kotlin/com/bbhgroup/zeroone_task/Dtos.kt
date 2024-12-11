@@ -15,11 +15,11 @@ data class UserCreateRequest(
 }
 
 data class UserResponse(
-        val id: Long,
-        val fullName: String,
-        val phoneNumber: String,
-        val chatId: Long,
-        val language: Set<Languages>
+    val id: Long,
+    val fullName: String,
+    val phoneNumber: String,
+    val chatId: Long,
+    val language: Set<Languages?>
 ){
     companion object{
         fun toResponse(userEntity: UserEntity):UserResponse{

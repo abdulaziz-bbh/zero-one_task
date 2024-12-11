@@ -67,10 +67,18 @@ interface UserRepository : BaseRepository<UserEntity> {
     fun findUserEntityByRoleAndDeletedFalse(role: Role, pageable: Pageable):Page<UserEntity>
     @Query("select u from users u where u.createdAt between :startTime and :endTime")
     fun findUserEntityByCreatedAtBetween(startTime: LocalDateTime, endTime: LocalDateTime, pageable: Pageable):Page<UserEntity>
+
+    fun existsByChatId(chatId: Long): Boolean
 }
 
 @Repository
-interface SessionRepository : BaseRepository<Session>
+interface SessionRepository : BaseRepository<Session>{
+
+    @Query("""
+        select s from Session s where s.client.chatId = :chatId and s.isActive = true
+    """)
+    fun findByChatIdAndIsActiveTrue(chatId: Long): Session?
+}
 
 @Repository
 interface QueueRepository : BaseRepository<QueueEntity>
