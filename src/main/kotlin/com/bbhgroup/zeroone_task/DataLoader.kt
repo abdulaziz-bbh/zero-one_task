@@ -13,16 +13,19 @@ class DataLoader(
     }
 
     private fun loadAdmin() {
-        if (userRepository.countByRole(Role.ADMIN) == 0L) {
+        val adminPhoneNumber = "905969167"
+        if (userRepository.countByRole(Role.ADMIN) == 0L && userRepository.findByPhoneNumber(adminPhoneNumber) == null) {
             val admin = UserEntity(
                 fullName = "John Doe",
-                phoneNumber = "905969167",
+                phoneNumber = adminPhoneNumber,
                 chatId = 999999999L,
                 role = Role.ADMIN,
                 language = setOf(Languages.ENG)
             )
             userRepository.save(admin)
             println("Admin user loaded")
+        } else {
+            println("Admin user already exists")
         }
     }
 }
