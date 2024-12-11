@@ -14,37 +14,28 @@ abstract class BaseEntity(
 
 @Entity(name = "users")
 class UserEntity(
-    val fullName: String,
-    @Column(nullable = false, unique = true)
-    var phoneNumber: String,
-    @Column(nullable = false, unique = true)
-    val chatId: Long,
-    @Enumerated(EnumType.STRING) var role: Role = Role.USER,
-    val botSteps: BotSteps=BotSteps.START,
-    @ElementCollection val language: Set<Languages>
-):BaseEntity()
+        val fullName: String,
+        @Column(nullable = false, unique = true)
+        var phoneNumber: String,
+        @Column(nullable = false, unique = true)
+        val chatId: Long,
+        @Enumerated(EnumType.STRING) var role: Role = Role.USER,
+        @ElementCollection @Enumerated(EnumType.STRING) val language: Set<Languages>
+) : BaseEntity()
 
 @Entity(name = "messages")
 class MessagesEntity(
-    @ManyToOne
-    var client: UserEntity,
-    var text: String?,
-    var fileId: Long?,
-    var messageType: MessageType,
-    @ManyToOne
-    var session: Session,
-    @ManyToOne var replyTo: MessagesEntity? = null,
-
-) : BaseEntity()
-
-@Entity
-class QueueEntity(
-    @ManyToOne
-    val client: UserEntity,
-    var text: String?,
-    var fileId: Long?,
-    var messageType: MessageType,
-    val position: Long
+        @ManyToOne
+        val user: UserEntity,
+        val text: String? = null,
+        val fileId: String? = null,
+        val mediaUrl: String? = null,
+        val messageId: Int? = null,
+        val replyToMessageId: Int? = null,
+        @Enumerated(EnumType.STRING)
+        val messageType: MessageType,
+        @ManyToOne
+        val session: Session
 ) : BaseEntity()
 
 @Entity(name = "rates")
