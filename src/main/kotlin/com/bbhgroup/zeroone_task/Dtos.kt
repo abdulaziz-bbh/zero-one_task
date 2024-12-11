@@ -1,5 +1,7 @@
 package com.bbhgroup.zeroone_task
 
+import jakarta.annotation.Nonnull
+
 
 data class BaseMessage(val code: Int, val message: String?)
 

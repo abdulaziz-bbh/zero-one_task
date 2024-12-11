@@ -12,6 +12,7 @@ import org.springframework.data.jpa.repository.support.JpaEntityInformation
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository
 import org.springframework.data.repository.NoRepositoryBean
 import org.springframework.data.repository.findByIdOrNull
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
 
@@ -58,6 +59,23 @@ class BaseRepositoryImpl<T : BaseEntity>(
 
 @Repository
 interface UserRepository : BaseRepository<UserEntity> {
+    fun countByRole(role: Role): Long
+
+    @Query("""
+    select count(u) > 0 
+    from users u 
+    where u.id = :id
+    and u.role = 'USER'
+""")
+    fun existsByClientId(@Param("id") id: Long?): Boolean
+
+    @Query("""
+    select count(u) > 0 
+    from users u 
+    where u.id = :id
+    and u.role = 'OPERATOR'
+""")
+    fun existsByOperatorId(@Param("id") id: Long?): Boolean
     @Query("select u from users as u where u.chatId=:chatId and u.deleted=false")
     fun findUserEntityByChatIdAndDeletedFalse(chatId: Long): UserEntity?
     @Query("select u from users as u where u.deleted=false and u.phoneNumber=:phoneNumber and u.id=:id")
@@ -84,6 +102,18 @@ interface SessionRepository : BaseRepository<Session>{
     fun findByChatIdAndIsActiveTrue(chatId: Long): Session?
     fun findAllByClientIdAndDeletedFalseOrderByCreatedAtDesc(clientId: Long): List<Session>
     fun findAllByOperatorIdAndDeletedFalseOrderByCreatedAtDesc(operatorId: Long): List<Session>
+    @Query("""
+    select count(s) > 0 
+    from sessions s 
+    where s.id = :id
+""")
+    fun existsBySessionId(@Param("id") id: Long?): Boolean
+}
+
+@Repository
+interface QueueRepository : BaseRepository<QueueEntity> {
+    fun findFirstByDeletedFalseOrderByPositionAsc(): QueueEntity?
+    fun findAllByClientIdAndDeletedFalseOrderByCreatedAtAsc(clientId: Long): List<QueueEntity>
     @Query("select s from sessions as s where s.deleted=false and s.createdAt between :startTime and :endTime ")
     fun findSessionByCreatedAtBetween(startTime: LocalDateTime, endTime: LocalDateTime,pageable: Pageable):Page<Session>
 }
@@ -94,4 +124,6 @@ interface MessageRepository : BaseRepository<MessagesEntity> {
 }
 
 @Repository
-interface RatingRepository : BaseRepository<RatingEntity>
+interface RatingRepository : BaseRepository<RatingEntity>{
+
+}

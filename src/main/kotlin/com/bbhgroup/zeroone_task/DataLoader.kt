@@ -1,4 +1,31 @@
 package com.bbhgroup.zeroone_task
 
-class DataLoader {
+import org.springframework.boot.CommandLineRunner
+import org.springframework.stereotype.Component
+
+@Component
+class DataLoader(
+    private val userRepository: UserRepository
+) : CommandLineRunner {
+
+    override fun run(vararg args: String?) {
+        loadAdmin()
+    }
+
+    private fun loadAdmin() {
+        val adminPhoneNumber = "905969167"
+        if (userRepository.countByRole(Role.ADMIN) == 0L && userRepository.findByPhoneNumber(adminPhoneNumber) == null) {
+            val admin = UserEntity(
+                fullName = "John Doe",
+                phoneNumber = adminPhoneNumber,
+                chatId = 999999999L,
+                role = Role.ADMIN,
+                language = setOf(Languages.ENG)
+            )
+            userRepository.save(admin)
+            println("Admin user loaded")
+        } else {
+            println("Admin user already exists")
+        }
+    }
 }

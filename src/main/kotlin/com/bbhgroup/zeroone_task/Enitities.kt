@@ -39,14 +39,6 @@ class MessagesEntity(
         val session: Session
 ) : BaseEntity()
 
-@Entity(name = "rates")
-class RatingEntity(
-    val rate: Int,
-    @ManyToOne val client: UserEntity,
-    @ManyToOne val operator: UserEntity,
-    @OneToOne val session: Session
-) : BaseEntity()
-
 @Entity(name = "sessions")
 class Session(
     @ManyToOne
