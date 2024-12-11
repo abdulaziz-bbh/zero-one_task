@@ -28,14 +28,7 @@ interface QueueService {
     fun findAllByClientId(clientId: Long): MessageQueueResponse
     fun findFirstQueueClientId(): Long
 }
-interface RatingService{
-    fun getAll(pageable: Pageable): Page<RatingResponse>
-    fun getAll(): List<RatingResponse>
-    fun getOne(id: Long): RatingResponse
-    fun create(request: RatingCreateRequest)
-    fun update(id: Long, request: RatingUpdateRequest)
-    fun delete(id: Long)
-}
+ 
 
 
 @Service
@@ -305,61 +298,4 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
     @Service
     class SessionServiceImpl(private val sessionRepository: SessionRepository) : SessionService {}
 
-    @Service
-    class RatingServiceImpl(
-        private val ratingRepository: RatingRepository,
-        private val userRepository: UserRepository,
-        private val ratingMapper: RatingMapper,
-        private val sessionRepository: SessionRepository,
-        private val entityManager: EntityManager
-    ) : RatingService {
-
-
-        override fun getAll(pageable: Pageable): Page<RatingResponse> {
-            return ratingRepository.findAllNotDeletedForPageable(pageable).map {
-                ratingMapper.toDto(it)
-            }
-        }
-
-        override fun getAll(): List<RatingResponse> {
-            return ratingRepository.findAllNotDeleted().map {
-                ratingMapper.toDto(it)
-            }
-        }
-
-        override fun getOne(id: Long): RatingResponse {
-            ratingRepository.findByIdAndDeletedFalse(id)?.let {
-                return ratingMapper.toDto(it)
-            } ?: throw RatingNotFoundException()
-        }
-
-        override fun create(request: RatingCreateRequest) {
-            val existsByClientId = userRepository.existsByClientId(request.clientId)
-            if (!existsByClientId) throw UserNotFoundException()
-            val existsByOperatorId = userRepository.existsByOperatorId(request.operatorId)
-            if (!existsByOperatorId) throw OperatorNotFoundException()
-            val existsBySessionId = sessionRepository.existsBySessionId(request.sessionId)
-            if (!existsBySessionId) throw SessionNotFoundException()
-            val client = entityManager.getReference(
-                UserEntity::class.java, request.clientId)
-            val operator = entityManager.getReference(
-                UserEntity::class.java, request.operatorId)
-            val session = entityManager.getReference(
-                Session::class.java, request.sessionId)
-            ratingRepository.save(ratingMapper.toEntity(request,client,operator,session))
-        }
-
-        override fun update(id: Long, request: RatingUpdateRequest) {
-            val rating = ratingRepository.findByIdAndDeletedFalse(id) ?: throw RatingNotFoundException()
-            request.rate.let { rating.rate = it }
-            ratingRepository.save(ratingMapper.updateEntity(rating, request))
-        }
-
-        override fun delete(id: Long) {
-            ratingRepository.trash(id) ?: throw RatingNotFoundException()
-        }
-
-
-
-
-    }
+     
