@@ -23,19 +23,19 @@ data class UpdateMessageQueueDto(
 data class MessageDto(
     val clientOrOperatorId: Long,
     val text: String?,
-    val messageType: MessageType,
+    val messageType: MessageType?,
     val sessionId: Long,
-    val replyMessageId: Long?,
-    val fileId: Long? = null,
+    val replyMessageId: Int?,
+    val fileId: String? = null,
 ) {
-    fun toEntity(clientOrOperator: UserEntity, session: Session, replyMessage: MessagesEntity?): MessagesEntity {
+    fun toEntity(clientOrOperator: UserEntity, session: Session, replyMessage: Int?): MessagesEntity {
         return MessagesEntity(
-            clientOrOperator,
-            text,
-            fileId,
-            messageType,
-            session,
-            replyMessage,
+            user = clientOrOperator,
+            session = session,
+            text = text,
+            fileId = fileId,
+            messageType = messageType!!,
+            replyToMessageId = replyMessage
         )
     }
 }

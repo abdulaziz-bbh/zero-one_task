@@ -262,7 +262,7 @@ class BotService(
 
         val textMessage = message.text
         val messageEntity = MessagesEntity(
-            client = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!,
+            user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!,
             text = textMessage,
             fileId = fileId,
             mediaUrl = mediaUrl,

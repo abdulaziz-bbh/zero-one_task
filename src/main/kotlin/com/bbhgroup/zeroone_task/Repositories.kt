@@ -76,7 +76,7 @@ interface UserRepository : BaseRepository<UserEntity> {
 interface SessionRepository : BaseRepository<Session>{
 
     @Query("""
-        select s from Session s where s.client.chatId = :chatId and s.isActive = true
+        select s from Session s where s.user.chatId = :chatId and s.isActive = true
     """)
     fun findByChatIdAndIsActiveTrue(chatId: Long): Session?
     fun findAllByClientIdAndDeletedFalseOrderByCreatedAtDesc(clientId: Long): List<Session>

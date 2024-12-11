@@ -27,7 +27,7 @@ class UserEntity(
 @Entity(name = "messages")
 class MessagesEntity(
         @ManyToOne
-        val client: UserEntity,
+        val user: UserEntity,
         val text: String? = null,
         val fileId: String? = null,
         val mediaUrl: String? = null,
@@ -37,30 +37,6 @@ class MessagesEntity(
         val messageType: MessageType,
         @ManyToOne
         val session: Session
-) : BaseEntity()
-
-
-@Entity(name = "messages")
-class MessagesEntity(
-    @ManyToOne
-    var client: UserEntity,
-    var text: String?,
-    var fileId: Long?,
-    var messageType: MessageType,
-    @ManyToOne
-    var session: Session,
-    @ManyToOne var replyTo: MessagesEntity? = null,
-
-) : BaseEntity()
-
-@Entity
-class QueueEntity(
-    @ManyToOne
-    val client: UserEntity,
-    var text: String?,
-    var fileId: Long?,
-    var messageType: MessageType,
-    val position: Long
 ) : BaseEntity()
 
 @Entity(name = "rates")

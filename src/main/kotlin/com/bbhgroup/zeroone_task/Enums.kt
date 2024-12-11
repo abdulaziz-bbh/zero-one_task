@@ -7,7 +7,7 @@ enum class Role {
 enum class Languages(val key: String) {
     UZ("uz"),
     RU("ru"),
-    ENG("en")
+    EN("en")
 }
 
 enum class InquiriesStatus {
@@ -52,16 +52,6 @@ enum class MessageKeys{
     SUCCESS_SHARE_CONTACT,
     ALREADY_REGISTERED,
     CANCEL_CHAT
-}
-
-enum class Role{
-    USER,ADMIN,OPERATOR
-}
-
-enum class Languages(val key:String){
-    UZ("uz"),
-    RU("ru"),
-    EN("en")
 }
 
 enum class MessageType{

@@ -138,24 +138,20 @@ class MessageServiceImpl(
         val session =
             sessionRepository.findByIdAndDeletedFalse(request.sessionId) ?: throw SessionNotFoundMException()
         if (
-            session.operator.id != clientOrOperator.id ||
+            session.operator!!.id != clientOrOperator.id ||
             session.client.id != clientOrOperator.id
         ) throw InvalidSessionClientIdException()
 
         if (request.text != null && request.messageType != MessageType.TEXT) throw InvalidMessageTypeException()
         if (request.fileId != null && request.messageType == MessageType.TEXT) throw InvalidMessageTypeException()
-        var replyMessage: MessagesEntity? = null
 
-        request.replyMessageId?.let {
-            replyMessage = messageRepository.findByIdAndDeletedFalse(it) ?: throw MessageNotFoundException()
-        }
-        messageRepository.save(request.toEntity(clientOrOperator, session, replyMessage))
+        messageRepository.save(request.toEntity(clientOrOperator, session, request.replyMessageId))
     }
 
     @Transactional
     override fun deleteMessage(id: Long, clientId: Long) {
         val message = messageRepository.findByIdAndDeletedFalse(id) ?: throw MessageNotFoundException()
-        if (message.session.client.id != clientId || message.session.operator.id != clientId) throw InvalidSessionClientIdException()
+        if (message.session.client.id != clientId || message.session.operator!!.id != clientId) throw InvalidSessionClientIdException()
         messageRepository.trash(id)
     }
 

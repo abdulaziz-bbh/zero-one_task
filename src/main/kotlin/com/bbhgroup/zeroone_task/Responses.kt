@@ -13,8 +13,8 @@ data class MessageSessionResponse(
         fun toResponse(session: Session, messageList: List<MessagesEntity>): MessageSessionResponse {
             return MessageSessionResponse(
                 session.id,
-                session.operator.id,
-                session.operator.phoneNumber,
+                session.operator!!.id,
+                session.operator!!.phoneNumber,
                 session.client.id,
                 session.client.phoneNumber,
                 session.client.language.first(),
@@ -27,7 +27,7 @@ data class MessageSessionResponse(
 data class ReplyMessageResponse(
     val id: Long?,
     val createdAt: String,
-    val fileId: Long?,
+    val fileId: String?,
     val text: String?,
     val messageType: MessageType,
 ) {
@@ -47,11 +47,11 @@ data class ReplyMessageResponse(
 data class MessageSessionItemResponse(
     val id: Long?,
     val createdAt: String,
-    val fileId: Long?,
+    val fileId: String?,
     val text: String?,
     val messageType: MessageType,
     val isOperatorMessage: Boolean,
-    val replyMessage: ReplyMessageResponse? = null,
+    val replyMessage:Int? = null,
 ) {
     companion object {
         fun toResponse(session: Session, message: MessagesEntity): MessageSessionItemResponse {
@@ -61,10 +61,8 @@ data class MessageSessionItemResponse(
                 message.fileId,
                 message.text,
                 message.messageType,
-                session.operator.id == message.client.id,
-                message.replyTo?.let {
-                    ReplyMessageResponse.toResponse(it)
-                }
+                session.operator!!.id == message.user.id,
+                message.replyToMessageId
             )
         }
     }
