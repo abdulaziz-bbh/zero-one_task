@@ -1,11 +1,11 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/operator_bot
+    url: jdbc:postgresql://localhost:5432/taskbot
     password: postgres
     username: postgres
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     show-sql: true
     properties:
       hibernate:

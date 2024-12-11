@@ -14,43 +14,38 @@ abstract class BaseEntity(
 
 @Entity(name = "users")
 class UserEntity(
-    val fullName: String,
-    @Column(nullable = false, unique = true)
-    var phoneNumber: String,
-    @Column(nullable = false, unique = true)
-    val chatId: Long,
-    @Enumerated(EnumType.STRING) var role: Role = Role.USER,
-    @ElementCollection val language: Set<Languages>
-):BaseEntity()
+        val fullName: String,
+        @Column(nullable = false, unique = true)
+        var phoneNumber: String,
+        @Column(nullable = false, unique = true)
+        val chatId: Long,
+        @Enumerated(EnumType.STRING) var role: Role = Role.USER,
+        @ElementCollection @Enumerated(EnumType.STRING) val language: Set<Languages>,
+        @Enumerated(EnumType.STRING) var botSteps: BotSteps? = BotSteps.START
+) : BaseEntity()
 
 @Entity(name = "messages")
 class MessagesEntity(
-    @ManyToOne
-    var client: UserEntity,
-    var text: String?,
-    var fileId: Long?,
-    var messageType: MessageType,
-    @ManyToOne
-    var session: Session,
-    @ManyToOne var replyTo: MessagesEntity? = null,
-
+        @ManyToOne
+        val user: UserEntity,
+        val text: String? = null,
+        val fileId: String? = null,
+        val mediaUrl: String? = null,
+        val messageId: Int? = null,
+        val replyToMessageId: Int? = null,
+        @Enumerated(EnumType.STRING)
+        val messageType: MessageType,
+        @ManyToOne
+        val session: Session
 ) : BaseEntity()
 
-@Entity
-class QueueEntity(
-    @ManyToOne
-    val client: UserEntity,
-    var text: String?,
-    var fileId: Long?,
-    var messageType: MessageType,
-    val position: Long
-) : BaseEntity()
- 
 @Entity(name = "sessions")
 class Session(
     @ManyToOne
     val client: UserEntity,
+    var isActive: Boolean=true,
     @ManyToOne
-    val operator: UserEntity,
-    val active: Boolean
+    val operator: UserEntity? = null,
+    val rate : Int? =null,
+    val commentForRate: String? = null,
 ) : BaseEntity()
