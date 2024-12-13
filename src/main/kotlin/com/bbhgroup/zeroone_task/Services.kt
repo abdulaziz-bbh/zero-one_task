@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 
@@ -40,6 +41,14 @@ interface SessionService {
     fun getAll(startTime: String?,
                endTime: String?,
                pageable: Pageable):Page<SessionResponse>
+}
+
+interface StatisticsService {
+    fun getTotalSessions(): TotalSessionsResponse
+    fun getOperatorSessionStatistics(operatorId: Long): OperatorSessionStatisticsResponse
+    fun getDetailedRatings(): DetailedRatingResponse
+    fun getUserStatistics(): List<UserStatisticsResponse>
+    fun getTopRatedOperators(lastMonth: Boolean = true, limit: Int = 10): List<TopRatedOperatorResponse>
 }
 
 @Service
@@ -245,3 +254,68 @@ class MessageServiceImpl(
     }
 }
 
+
+
+@Service
+class StatisticsServiceImpl(
+    private val sessionRepository: SessionRepository,
+    private val userRepository: UserRepository,
+    private val statisticsMapper: StatisticsMapper
+) : StatisticsService {
+
+
+    override fun getTotalSessions(): TotalSessionsResponse {
+        val totalSessions = sessionRepository.count()
+        val totalActiveSessions = sessionRepository.countByIsActiveTrue()
+        return statisticsMapper.toTotalSessionsResponse(totalSessions, totalActiveSessions)
+    }
+
+    override fun getOperatorSessionStatistics(operatorId: Long): OperatorSessionStatisticsResponse {
+        val operator = userRepository.findByIdAndRoleAndDeletedFalse(operatorId, Role.OPERATOR)
+            ?: throw UserNotFoundException()
+        val sessions = sessionRepository.findByOperatorId(operatorId)
+        return statisticsMapper.toOperatorSessionStatisticsResponse(
+            operatorId = operatorId,
+            operatorName = operator.fullName,
+            sessions = sessions
+        )
+    }
+
+
+    override fun getDetailedRatings(): DetailedRatingResponse {
+        val allSessions = sessionRepository.findAll()
+        return statisticsMapper.toDetailedRatingResponse(allSessions)
+    }
+
+    override fun getUserStatistics(): List<UserStatisticsResponse> {
+        val users = userRepository.findAll()
+        return users.map { user ->
+            val sessions = sessionRepository.findByClientId(user.id!!)
+            statisticsMapper.toUserStatisticsResponse(user, sessions)
+        }
+    }
+
+    override fun getTopRatedOperators(lastMonth: Boolean, limit: Int): List<TopRatedOperatorResponse> {
+        val now = LocalDateTime.now()
+        val startDate = if (lastMonth) now.minusMonths(1) else LocalDateTime.MIN
+        val sessions = sessionRepository.findSessionsByCreatedAtBetween(startDate, now)
+
+        val operatorRatings = sessions.filter { it.operator != null }
+            .groupBy { it.operator!! }
+            .map { (operator, sessions) ->
+                val ratings = sessions.mapNotNull { it.rate }
+                val totalRatings = ratings.size.toLong()
+                val averageRating = if (ratings.isNotEmpty()) ratings.average() else 0.0
+
+                statisticsMapper.toTopRatedOperatorResponse(
+                    operator = operator,
+                    averageRating = averageRating,
+                    totalRatings = totalRatings
+                )
+            }
+        return operatorRatings
+            .sortedByDescending { it.averageRating }
+            .take(limit)
+    }
+
+}
