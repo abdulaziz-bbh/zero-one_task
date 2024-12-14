@@ -99,9 +99,12 @@ interface UserRepository : BaseRepository<UserEntity> {
 interface SessionRepository : BaseRepository<Session>{
 
     @Query("""
-        select s from sessions s where s.client.chatId = :chatId and s.isActive = true
+        select s from sessions s where s.client.chatId = :chatId and s.status = 'PENDING'
     """)
     fun findByChatIdAndIsActiveTrue(chatId: Long): Session?
+
+    @Query("select s from sessions s where s.status = 'PENDING' order by s.createdAt asc ")
+    fun findFirstPendingSession(): Session?
     fun findAllByClientIdAndDeletedFalseOrderByCreatedAtDesc(clientId: Long): List<Session>
     fun findAllByOperatorIdAndDeletedFalseOrderByCreatedAtDesc(operatorId: Long): List<Session>
     @Query("""
@@ -117,4 +120,6 @@ interface SessionRepository : BaseRepository<Session>{
 @Repository
 interface MessageRepository : BaseRepository<MessagesEntity> {
     fun findAllBySessionIdAndDeletedFalseOrderByCreatedAtAsc(sessionId: Long): List<MessagesEntity>
+
+    fun findAllBySessionIdOrderByCreatedAtAsc(sessionId: Long): List<MessagesEntity>
 }

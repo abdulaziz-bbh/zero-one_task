@@ -58,8 +58,8 @@ data class UserCreateRequest(
         val chatId: Long,
         val language: Set<Languages>
 ) {
-    fun toEntity(role: Role, botSteps: BotSteps): UserEntity {
-        return UserEntity(fullName, phoneNumber, chatId, role, language, botSteps)
+    fun toEntity(role: Role, status: Status, botSteps: BotSteps): UserEntity {
+        return UserEntity(fullName, phoneNumber, chatId, role, language, status,botSteps)
     }
 }
 
@@ -92,9 +92,6 @@ data class SessionCreateRequest(
         val rate: Int,
         val commentForRate: String
 ) {
-    fun toEntity(userId: UserEntity, operatorId: UserEntity): Session {
-        return Session(userId, true, operatorId, rate, commentForRate)
-    }
 }
 
 data class SessionResponse(
