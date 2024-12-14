@@ -21,6 +21,7 @@ class UserEntity(
         val chatId: Long,
         @Enumerated(EnumType.STRING) var role: Role = Role.USER,
         @ElementCollection @Enumerated(EnumType.STRING) val language: Set<Languages>,
+        @Enumerated(EnumType.STRING) var status: Status? = null,
         @Enumerated(EnumType.STRING) var botSteps: BotSteps? = BotSteps.START
 ) : BaseEntity()
 
@@ -33,17 +34,21 @@ class MessagesEntity(
         val mediaUrl: String? = null,
         val messageId: Int? = null,
         val replyToMessageId: Int? = null,
+        val latitude: Double? = null,
+        val longitude: Double? = null,
         @Enumerated(EnumType.STRING)
         val messageType: MessageType,
         @ManyToOne
-        val session: Session
+        val session: Session,
+
 ) : BaseEntity()
 
 @Entity(name = "sessions")
 class Session(
     @ManyToOne
     val client: UserEntity,
-    var isActive: Boolean=true,
+    @Enumerated(EnumType.STRING)
+    var status: SessionStatus,
     @ManyToOne
     val operator: UserEntity? = null,
     val rate : Int? =null,
