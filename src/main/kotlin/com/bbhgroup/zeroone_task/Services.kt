@@ -29,13 +29,14 @@ interface UserService {
     fun changeRole(id: Long, role: String)
     fun saveUser(chatId: Long, fullName: String?, language: String?, phone: String?)
     fun existsByChatId(chatId: Long): Boolean
-    fun getLanguages(chatId: Long):String
+    fun getLanguages(chatId: Long): String
 }
 
 
 interface MessageService {
     fun saveClientOperatorMessage(request: MessageDto)
     fun deleteMessage(id: Long, clientId: Long)
+    fun findAllBetweenDates(request: MessageDateBetweenDto):List<MessageSessionResponse>
     fun findAllBySessionId(sessionId: Long): MessageSessionResponse
     fun findAllByClientId(clientId: Long): List<MessageSessionResponse>
     fun findAllByOperatorId(operatorId: Long): List<MessageSessionResponse>
@@ -46,13 +47,15 @@ interface MessageService {
 
 interface SessionService {
     fun create(request: SessionCreateRequest)
-    fun getOne( id: Long):SessionResponse
+    fun getOne(id: Long): SessionResponse
     fun deleteOne(id: Long)
-    fun getAll(startTime: String?,
-               endTime: String?,
-               pageable: Pageable):Page<SessionResponse>
+    fun getAll(
+        startTime: String?,
+        endTime: String?,
+        pageable: Pageable
+    ): Page<SessionResponse>
 
-    fun findAllByRate(pageable: Pageable):Page<SessionResponse>
+    fun findAllByRate(pageable: Pageable): Page<SessionResponse>
 }
 
 @Service
@@ -61,7 +64,7 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
         request.run {
             val user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)
             if (user != null) throw UserHasAlreadyExistsException()
-            userRepository.save(this.toEntity(Role.USER,Status.NOT_WORKING, BotSteps.START))
+            userRepository.save(this.toEntity(Role.USER, Status.NOT_WORKING, BotSteps.START))
         }
     }
 
@@ -139,6 +142,7 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
         userEntity.role = validRole
         userRepository.save(userEntity)
     }
+
     override fun saveUser(chatId: Long, fullName: String?, language: String?, phone: String?) {
         val user = UserEntity(
             chatId = chatId,
@@ -194,6 +198,38 @@ class MessageServiceImpl(
         messageRepository.trash(id)
     }
 
+    override fun findAllBetweenDates(request: MessageDateBetweenDto):List<MessageSessionResponse> {
+        val endDate = if (request.endDate != null) request.endDate.endOfDateTime() else Date().endOfDateTime()
+        val sessionList = if (request.sessionId != null) {
+            sessionRepository.findAllByIdAndCreatedAtBetweenAndDeletedFalseOrderByCreatedAtDesc(
+                request.sessionId,
+                request.beginDate,
+                endDate,
+            )
+        } else if (request.clientId != null) {
+            sessionRepository.findAllByClientIdAndCreatedAtBetweenAndDeletedFalseOrderByCreatedAtDesc(
+                request.clientId,
+                request.beginDate,
+                endDate,
+            )
+        } else if (request.operatorId != null) {
+            sessionRepository.findAllByOperatorIdAndCreatedAtBetweenAndDeletedFalseOrderByCreatedAtDesc(
+                request.operatorId,
+                request.beginDate,
+                endDate,
+            )
+        } else {
+            sessionRepository.findAllByCreatedAtBetweenAndDeletedFalseOrderByCreatedAtDesc(request.beginDate, endDate)
+        }
+
+        if (sessionList.isEmpty()) throw EmptyListMException()
+
+        return sessionList.map { session ->
+            val messageList = messageRepository.findAllBySessionIdAndDeletedFalseOrderByCreatedAtAsc(session.id!!)
+            MessageSessionResponse.toResponse(session, messageList)
+        }.toList()
+    }
+
     override fun findAllBySessionId(sessionId: Long): MessageSessionResponse {
         val session = sessionRepository.findByIdAndDeletedFalse(sessionId) ?: throw SessionNotFoundMException()
 
@@ -222,6 +258,7 @@ class MessageServiceImpl(
             MessageSessionResponse.toResponse(session, messageList)
         }.toList()
     }
+
     override fun handleMessage(message: Message, chatId: Long) {
         val messageType = when {
             message.text != null -> MessageType.TEXT
@@ -249,15 +286,18 @@ class MessageServiceImpl(
             else -> null
         }
 
-        val mediaUrl = fileId?.takeIf { messageType in listOf(
-            MessageType.VOICE,
-            MessageType.AUDIO,
-            MessageType.VIDEO,
-            MessageType.PHOTO,
-            MessageType.VIDEO_NOTE,
-            MessageType.STICKER,
-            MessageType.GIF,
-            MessageType.DOCUMENT,) }
+        val mediaUrl = fileId?.takeIf {
+            messageType in listOf(
+                MessageType.VOICE,
+                MessageType.AUDIO,
+                MessageType.VIDEO,
+                MessageType.PHOTO,
+                MessageType.VIDEO_NOTE,
+                MessageType.STICKER,
+                MessageType.GIF,
+                MessageType.DOCUMENT,
+            )
+        }
             ?.let { getFileUrl(it) }
 
         val maxFileSize = 10 * 1024 * 1024 // 10 MB
@@ -292,77 +332,80 @@ class MessageServiceImpl(
 
     override fun getFileSize(fileId: String): Long {
         val file = botService.execute(GetFile(fileId))
-        val fileUrl = fileApi+ file.filePath
+        val fileUrl = fileApi + file.filePath
         val urlConnection = URL(fileUrl).openConnection()
         urlConnection.connect()
         return urlConnection.contentLengthLong
     }
-   override fun getFileUrl(fileId: String): String {
+
+    override fun getFileUrl(fileId: String): String {
         val getFile = GetFile(fileId)
         val file = botService.execute(getFile)
-        return fileApi+file.filePath
+        return fileApi + file.filePath
     }
 
 
 }
-    @Service
-    class SessionServiceImpl(
-        private val sessionRepository: SessionRepository,
-        private val userRepository: UserRepository
-    ) : SessionService {
-        @Transactional
-        override fun create(request: SessionCreateRequest) {
-            val user = userRepository.findByIdAndDeletedFalse(request.userId) ?: throw UserNotFoundException()
-            val operator = userRepository.findUserEntityByIdAndRoleAndDeletedFalse(request.operatorId, Role.OPERATOR)
-                ?: throw UserNotFoundException()
-            val session = Session(
-                client = user,
-                operator = operator,
-                status = SessionStatus.PENDING,
-                rate = request.rate,
-                commentForRate = request.commentForRate
+
+@Service
+class SessionServiceImpl(
+    private val sessionRepository: SessionRepository,
+    private val userRepository: UserRepository
+) : SessionService {
+    @Transactional
+    override fun create(request: SessionCreateRequest) {
+        val user = userRepository.findByIdAndDeletedFalse(request.userId) ?: throw UserNotFoundException()
+        val operator = userRepository.findUserEntityByIdAndRoleAndDeletedFalse(request.operatorId, Role.OPERATOR)
+            ?: throw UserNotFoundException()
+        val session = Session(
+            client = user,
+            operator = operator,
+            status = SessionStatus.PENDING,
+            rate = request.rate,
+            commentForRate = request.commentForRate
+        )
+        sessionRepository.save(session)
+    }
+
+    override fun getOne(id: Long): SessionResponse {
+        return sessionRepository.findByIdAndDeletedFalse(id)?.let {
+            SessionResponse.toResponse(it)
+        } ?: throw SessionNotFoundMException()
+    }
+
+    override fun deleteOne(id: Long) {
+        sessionRepository.trash(id) ?: throw SessionNotFoundMException()
+    }
+
+    override fun getAll(
+        startTime: String?,
+        endTime: String?,
+        pageable: Pageable
+    ): Page<SessionResponse> {
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val start = startTime?.let { LocalDate.parse(it, formatter).atStartOfDay() }
+        val end = endTime?.let { LocalDate.parse(it, formatter).atTime(23, 59, 59) }
+        val sessions = when {
+            start != null && end != null ->
+                sessionRepository.findSessionByCreatedAtBetween(start, end, pageable)
+
+            else ->
+                sessionRepository.findAllNotDeletedForPageable(pageable)
+        }
+        return sessions.map { session ->
+            SessionResponse(
+                id = session.id ?: throw IllegalStateException("Session ID cannot be null"),
+                userId = UserResponse.toResponse(session.client),
+                operatorId = UserResponse.toResponse(session.operator!!),
+                active = true
             )
-            sessionRepository.save(session)
-        }
-
-        override fun getOne(id: Long): SessionResponse {
-            return sessionRepository.findByIdAndDeletedFalse(id)?.let {
-                SessionResponse.toResponse(it)
-            } ?: throw SessionNotFoundMException()
-        }
-
-        override fun deleteOne(id: Long) {
-            sessionRepository.trash(id) ?: throw SessionNotFoundMException()
-        }
-
-        override fun getAll(
-            startTime: String?,
-            endTime: String?,
-            pageable: Pageable
-        ): Page<SessionResponse> {
-            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-            val start = startTime?.let { LocalDate.parse(it, formatter).atStartOfDay() }
-            val end = endTime?.let { LocalDate.parse(it, formatter).atTime(23, 59, 59) }
-            val sessions = when {
-                start != null && end != null ->
-                    sessionRepository.findSessionByCreatedAtBetween(start, end, pageable)
-
-                else ->
-                    sessionRepository.findAllNotDeletedForPageable(pageable)
-            }
-            return sessions.map { session ->
-                SessionResponse(
-                    id = session.id ?: throw IllegalStateException("Session ID cannot be null"),
-                    userId = UserResponse.toResponse(session.client),
-                    operatorId = UserResponse.toResponse(session.operator!!),
-                    active = true
-                )
-            }
-        }
-        override fun findAllByRate(pageable: Pageable): Page<SessionResponse> {
-            return sessionRepository.findAllByRateAndDeletedFalseAndActiveTrue(pageable).map {
-                SessionResponse.toResponse(it)
-            }
         }
     }
+
+    override fun findAllByRate(pageable: Pageable): Page<SessionResponse> {
+        return sessionRepository.findAllByRateAndDeletedFalseAndActiveTrue(pageable).map {
+            SessionResponse.toResponse(it)
+        }
+    }
+}
 
