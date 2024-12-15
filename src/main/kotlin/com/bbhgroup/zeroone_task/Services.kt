@@ -1,6 +1,5 @@
 package com.bbhgroup.zeroone_task
 
-import jakarta.persistence.EntityManager
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -40,6 +39,8 @@ interface SessionService {
     fun getAll(startTime: String?,
                endTime: String?,
                pageable: Pageable):Page<SessionResponse>
+
+    fun findAllByRate(pageable: Pageable):Page<SessionResponse>
 }
 
 @Service
@@ -242,6 +243,10 @@ class MessageServiceImpl(
                 )
             }
         }
+        override fun findAllByRate(pageable: Pageable): Page<SessionResponse> {
+            return sessionRepository.findAllByRateAndDeletedFalseAndActiveTrue(pageable).map {
+                SessionResponse.toResponse(it)
+            }
+        }
     }
 }
-
