@@ -1,9 +1,15 @@
 package com.bbhgroup.zeroone_task
 
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Lazy
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.telegram.telegrambots.meta.api.methods.GetFile
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage
+import org.telegram.telegrambots.meta.api.objects.Message
+import java.net.URL
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -21,6 +27,9 @@ interface UserService {
 
     fun update(id: Long, request: UserUpdateRequest)
     fun changeRole(id: Long, role: String)
+    fun saveUser(chatId: Long, fullName: String?, language: String?, phone: String?)
+    fun existsByChatId(chatId: Long): Boolean
+    fun getLanguages(chatId: Long):String
 }
 
 
@@ -30,6 +39,9 @@ interface MessageService {
     fun findAllBySessionId(sessionId: Long): MessageSessionResponse
     fun findAllByClientId(clientId: Long): List<MessageSessionResponse>
     fun findAllByOperatorId(operatorId: Long): List<MessageSessionResponse>
+    fun getFileUrl(fileId: String): String
+    fun getFileSize(fileId: String): Long
+    fun handleMessage(message: Message, chatId: Long)
 }
 
 interface SessionService {
@@ -49,7 +61,7 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
         request.run {
             val user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)
             if (user != null) throw UserHasAlreadyExistsException()
-            userRepository.save(this.toEntity(Role.USER, BotSteps.START))
+            userRepository.save(this.toEntity(Role.USER,Status.NOT_WORKING, BotSteps.START))
         }
     }
 
@@ -127,6 +139,24 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
         userEntity.role = validRole
         userRepository.save(userEntity)
     }
+    override fun saveUser(chatId: Long, fullName: String?, language: String?, phone: String?) {
+        val user = UserEntity(
+            chatId = chatId,
+            fullName = fullName!!,
+            language = setOf(Languages.valueOf(language!!)),
+            phoneNumber = phone!!
+        )
+        userRepository.save(user)
+    }
+
+    override fun existsByChatId(chatId: Long): Boolean {
+        return userRepository.existsByChatId(chatId)
+    }
+
+    override fun getLanguages(chatId: Long): String {
+        val user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!//todo exception qo'shish kerak
+        return user.language.first().key
+    }
 }
 
 @Service
@@ -134,7 +164,11 @@ class MessageServiceImpl(
     private val messageRepository: MessageRepository,
     private val userRepository: UserRepository,
     private val sessionRepository: SessionRepository,
+    @Lazy private val botService: BotService
 ) : MessageService {
+
+    @Value("\${bot.file-api}")
+    lateinit var fileApi: String
 
     @Transactional
     override fun saveClientOperatorMessage(request: MessageDto) {
@@ -188,7 +222,89 @@ class MessageServiceImpl(
             MessageSessionResponse.toResponse(session, messageList)
         }.toList()
     }
+    override fun handleMessage(message: Message, chatId: Long) {
+        val messageType = when {
+            message.text != null -> MessageType.TEXT
+            message.voice != null -> MessageType.VOICE
+            message.videoNote != null -> MessageType.VIDEO_NOTE
+            message.audio != null -> MessageType.AUDIO
+            message.video != null -> MessageType.VIDEO
+            message.photo != null -> MessageType.PHOTO
+            message.sticker != null -> MessageType.STICKER
+            message.animation != null -> MessageType.GIF
+            message.document != null -> MessageType.DOCUMENT
+            message.location != null -> MessageType.LOCATION
+            message.poll != null -> MessageType.POLL
+            else -> MessageType.UNKNOWN
+        }
+        val fileId = when {
+            message.voice != null -> message.voice.fileId
+            message.videoNote != null -> message.videoNote.fileId
+            message.audio != null -> message.audio.fileId
+            message.video != null -> message.video.fileId
+            message.photo != null -> message.photo.firstOrNull()?.fileId
+            message.sticker != null -> message.sticker.fileId
+            message.animation != null -> message.animation.fileId
+            message.document != null -> message.document.fileId
+            else -> null
+        }
 
+        val mediaUrl = fileId?.takeIf { messageType in listOf(
+            MessageType.VOICE,
+            MessageType.AUDIO,
+            MessageType.VIDEO,
+            MessageType.PHOTO,
+            MessageType.VIDEO_NOTE,
+            MessageType.STICKER,
+            MessageType.GIF,
+            MessageType.DOCUMENT,) }
+            ?.let { getFileUrl(it) }
+
+        val maxFileSize = 10 * 1024 * 1024 // 10 MB
+        val fileSize = fileId?.let { getFileSize(it) } ?: 0
+
+        if (fileSize > maxFileSize) {
+            val sendMessage = SendMessage().apply {
+                this.chatId = message.chatId.toString()
+                this.text = "Yuborish mumkin bo'lgan file'ning maksimal hajmi 10 MB"
+            }
+            botService.execute(sendMessage)
+            return
+        }
+
+        val textMessage = message.text
+        val replyMessageId = message.replyToMessage?.messageId
+        val messageEntity = MessagesEntity(
+            user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!,
+            text = textMessage,
+            messageId = message.messageId,
+            replyToMessageId = replyMessageId,
+            fileId = fileId,
+            mediaUrl = mediaUrl,
+            messageType = messageType,
+            latitude = message.location?.latitude,
+            longitude = message.location?.longitude,
+            session = sessionRepository.findByChatIdAndIsActiveTrue(chatId)!!
+        )
+
+        messageRepository.save(messageEntity)
+    }
+
+    override fun getFileSize(fileId: String): Long {
+        val file = botService.execute(GetFile(fileId))
+        val fileUrl = fileApi+ file.filePath
+        val urlConnection = URL(fileUrl).openConnection()
+        urlConnection.connect()
+        return urlConnection.contentLengthLong
+    }
+   override fun getFileUrl(fileId: String): String {
+        val getFile = GetFile(fileId)
+        val file = botService.execute(getFile)
+        return fileApi+file.filePath
+    }
+
+
+}
     @Service
     class SessionServiceImpl(
         private val sessionRepository: SessionRepository,
@@ -202,7 +318,7 @@ class MessageServiceImpl(
             val session = Session(
                 client = user,
                 operator = operator,
-                isActive = true,
+                status = SessionStatus.PENDING,
                 rate = request.rate,
                 commentForRate = request.commentForRate
             )
@@ -249,4 +365,4 @@ class MessageServiceImpl(
             }
         }
     }
-}
+

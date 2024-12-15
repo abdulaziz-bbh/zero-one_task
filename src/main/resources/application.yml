@@ -1,7 +1,7 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/taskbot
-    password: 1234
+    url: jdbc:postgresql://localhost:5432/operator_bot
+    password: postgres
     username: postgres
   jpa:
     hibernate:
@@ -10,5 +10,9 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+bot:
+  token: "7668006662:AAFGspD8yJTB5njgXCjSYAmBQZvdDnaBss8"
+  username: "@ZeroOneOperator_bot"
+  file-api: "https://api.telegram.org/file/bot7668006662:AAFGspD8yJTB5njgXCjSYAmBQZvdDnaBss8/"
 
 

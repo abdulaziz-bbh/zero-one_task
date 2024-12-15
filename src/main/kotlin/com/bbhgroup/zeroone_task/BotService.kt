@@ -1,11 +1,13 @@
 package com.bbhgroup.zeroone_task
 
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Lazy
 import org.springframework.context.support.ResourceBundleMessageSource
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
-import org.telegram.telegrambots.meta.api.methods.GetFile
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage
-import org.telegram.telegrambots.meta.api.objects.Message
+import org.telegram.telegrambots.meta.api.methods.send.*
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
+import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup
@@ -13,23 +15,31 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRem
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow
-import java.net.URL
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException
 import java.util.*
 
 @Component
 class BotService(
     private val userRepository: UserRepository,
-    private val messageRepository: MessageRepository,
     private val sessionRepository: SessionRepository,
-    private val messageSource: ResourceBundleMessageSource
+    private val messageSource: ResourceBundleMessageSource,
+    private val messageRepository: MessageRepository,
+    @Lazy private val messageService: MessageService,
+    private val userService: UserService
 ) : TelegramLongPollingBot() {
 
-    private var isLanguageSelected = false
     private var language: String? = null
-    var botSteps = BotSteps.START
+    private var languageCodes: MutableMap<Long, String> = mutableMapOf()
+    var botSteps = BotSteps.CONNECT_OPERATOR
 
-    override fun getBotUsername(): String = "@ZeroOneOperator_bot"
-    override fun getBotToken(): String = "7668006662:AAFGspD8yJTB5njgXCjSYAmBQZvdDnaBss8"
+    @Value("\${bot.username}")
+    lateinit var username:String
+
+    @Value("\${bot.token}")
+    lateinit var token:String
+
+    override fun getBotUsername(): String = username
+    override fun getBotToken(): String = token
 
     override fun onUpdateReceived(update: Update?) {
         if (update == null) return
@@ -41,8 +51,18 @@ class BotService(
         }
 
         if (chatId != null) {
-            if (userRepository.existsByChatId(chatId)) {
-                handleExistingUser(update, chatId)
+            if (userService.existsByChatId(chatId)) {
+                val user:UserEntity = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!
+                user.run {
+                    if (role == Role.USER) {
+                        writeToOperator(update, chatId)
+                    }
+                    if (role == Role.OPERATOR) {
+                        sendStartWorkButton(chatId)
+                            sendPendingMessage(chatId)
+                    }
+                }
+
             } else {
                 registerUser(update)
             }
@@ -53,43 +73,44 @@ class BotService(
         val name: String?
         val number: String?
 
-        if (update?.hasMessage() == true && botSteps == BotSteps.START) {
+        if (update?.hasMessage() == true && update.message.text == "/start") {
             chatId = update.message.chatId
             sendLanguageButtons(chatId)
-            botSteps = BotSteps.SELECT_LANGUAGE
             return
         }
-        if (update?.hasCallbackQuery() == true && botSteps == BotSteps.SELECT_LANGUAGE) {
+        if (update?.hasCallbackQuery() == true) {
+            val messageId = update.callbackQuery.message.messageId
             chatId = update.callbackQuery.message.chatId
             language = update.callbackQuery.data.toString()
-            isLanguageSelected = true
-            sendContactRequest(chatId, language!!)
-            botSteps = BotSteps.SHARE_CONTACT
+            if (languageCodes[chatId] == null) {
+                languageCodes[chatId] = update.callbackQuery.data.toString()
+            }
+            deleteMessage(chatId, messageId)
+            sendContactRequest(chatId)
             return
         }
 
-        if (update?.hasMessage() == true && isLanguageSelected && update.message.contact != null && botSteps == BotSteps.SHARE_CONTACT) {
-            chatId = update.message.chatId
-            number = update.message.contact.phoneNumber
-            name = update.message.contact.firstName
-            isLanguageSelected = false
-            sendConfirmationMessage(chatId)
-            removeContactButton(chatId)
-            saveUser(chatId, name, language!!.uppercase(), number)
-            sendConnectOperatorButton(chatId)
-            botSteps = BotSteps.CONNECT_OPERATOR
-            return
+       if (update?.hasMessage() == true  && update.message.contact != null) {
+           val senderId = update.message.contact.userId
+           val fromId = update.message.from.id
+           if (senderId == fromId) {
+               chatId = update.message.chatId
+               number = update.message.contact.phoneNumber
+               name = update.message.contact.firstName
+               removeContactButton(chatId)
+               userService.saveUser(chatId, name, language!!.uppercase(), number)
+               sendConnectOperatorButton(chatId)
+               botSteps = BotSteps.CONNECT_OPERATOR
+               return
+           }else{
+               sendTextMessage(
+                   update.message.chatId,
+                   getMessage(MessageKeys.SHARE_OTHER_CONTACT.name, languageCodes[update.message.chatId]!!)
+               )
+           }
         }
     }
-    private fun saveUser(chatId: Long, fullName: String?, language: String?, phone: String?) {
-        val user = UserEntity(
-            chatId = chatId,
-            fullName = fullName!!,
-            language = setOf(Languages.valueOf(language!!)),
-            phoneNumber = phone!!
-        )
-        userRepository.save(user)
-    }
+
     private fun sendLanguageButtons(chatId: Long) {
         val message = SendMessage().apply {
             this.chatId = chatId.toString()
@@ -106,17 +127,17 @@ class BotService(
         }
         execute(message)
     }
-    private fun sendContactRequest(chatId: Long, local: String) {
+    private fun sendContactRequest(chatId: Long) {
         val message = SendMessage().apply {
             this.chatId = chatId.toString()
-            text = getMessage("SHARE_CONTACT", local)
-            replyMarkup = createContactButton()
+            text = getMessage(MessageKeys.SHARE_CONTACT.name, languageCodes[chatId]!!)
+            replyMarkup = createContactButton(chatId)
         }
         execute(message)
     }
-    private fun createContactButton(): ReplyKeyboardMarkup {
+    private fun createContactButton(chatId: Long): ReplyKeyboardMarkup {
         val row = KeyboardRow().apply {
-            add(KeyboardButton("Share Contact").apply {
+            add(KeyboardButton(getMessage(MessageKeys.SHARE_CONTACT_BUTTON.name, languageCodes[chatId]!!)).apply {
                 requestContact = true
             })
         }
@@ -126,18 +147,11 @@ class BotService(
             oneTimeKeyboard = true
         }
     }
-    private fun sendConfirmationMessage(chatId: Long) {
-        val message = SendMessage().apply {
-            this.chatId = chatId.toString()
-            text = getMessage("SUCCESS_SHARE_CONTACT", language!!)
-        }
-        execute(message)
-    }
     private fun removeContactButton(chatId: Long) {
         val message = SendMessage().apply {
 
             this.chatId = chatId.toString()
-            text = "..."
+            text = getMessage(MessageKeys.SUCCESS_SHARE_CONTACT.name, languageCodes[chatId]!!)
             replyMarkup = ReplyKeyboardRemove().apply {
                 removeKeyboard = true
             }
@@ -147,19 +161,19 @@ class BotService(
     private fun getMessage(code: String, local: String): String {
         return messageSource.getMessage(code, null, Locale(local))
     }
-    private fun handleExistingUser(update: Update, chatId: Long) {
-        val messageText:String? = update.message?.text
-       if (botSteps == BotSteps.CONNECT_OPERATOR){
+
+    private fun writeToOperator(update: Update, chatId: Long) {
+        val user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!
+       if (user.botSteps == BotSteps.START && update.callbackQuery.data == "CONNECT_OPERATOR"){
+           deleteMessage(chatId, update.callbackQuery.message.messageId)
            startOperatorCommunication(chatId)
-           botSteps = BotSteps.SENDING_MESSAGES
-       }else if (botSteps == BotSteps.SENDING_MESSAGES){
+           user.botSteps = BotSteps.SENDING_MESSAGES
+           userRepository.save(user)
+       }else if (user.botSteps == BotSteps.SENDING_MESSAGES){
            if (update.hasMessage()) {
-               handleMessage(update.message, chatId)
+               messageService.handleMessage(update.message, chatId)
            }
-       }else if (messageText == "Chatni yakunlash") {
-            endChat(chatId)
-            return
-        }
+       }
     }
 
     private fun startOperatorCommunication(chatId: Long) {
@@ -171,17 +185,17 @@ class BotService(
 
         val connectMessage = SendMessage().apply {
             this.chatId = chatId.toString()
-            text = "Operator bilan muloqot boshlandi. Xabaringizni yozing."
-            replyMarkup = ReplyKeyboardMarkup().apply {
-                keyboard = mutableListOf(
-                    KeyboardRow().apply {
-                        add(KeyboardButton("Chatni yakunlash"))
-                        botSteps = BotSteps.END_CHAT
-                    }
-                )
-                resizeKeyboard = true
-                oneTimeKeyboard = true
-            }
+            text = getMessage(MessageKeys.WRITE_TO_OPERATOR.name, languageCodes[chatId]!!)
+//            replyMarkup = ReplyKeyboardMarkup().apply {
+//                keyboard = mutableListOf(
+//                    KeyboardRow().apply {
+//                        add(KeyboardButton("Chatni yakunlash"))
+//                        botSteps = BotSteps.END_CHAT
+//                    }
+//                )
+//                resizeKeyboard = true
+//                oneTimeKeyboard = true
+//            }
         }
         execute(connectMessage)
     }
@@ -193,7 +207,7 @@ class BotService(
         val activeSession = sessionRepository.findByChatIdAndIsActiveTrue(client.chatId)
             ?: throw RuntimeException("Faol session topilmadi.")
 
-        activeSession.isActive = false
+        activeSession.status =SessionStatus.COMPLETED
         sessionRepository.save(activeSession)
 
         val endMessage = SendMessage().apply {
@@ -202,14 +216,16 @@ class BotService(
         }
         execute(endMessage)
     }
+
     private fun sendConnectOperatorButton(chatId: Long) {
         val message = SendMessage().apply {
             this.chatId = chatId.toString()
-            text = "Operator bilan bog'lanish uchun quyidagi tugmani bosing:"
+            text = getMessage(MessageKeys.TEXT_CONNECT_BUTTON_TO_OPERATOR.name, languageCodes[chatId]!!)
             replyMarkup = InlineKeyboardMarkup().apply {
                 keyboard = listOf(
                     listOf(
-                        InlineKeyboardButton("Operator bilan bog'lanish").apply {
+                        InlineKeyboardButton(
+                            getMessage(MessageKeys.CONNECT_BUTTON_TO_OPERATOR.name, languageCodes[chatId]!!)).apply {
                             callbackData = "CONNECT_OPERATOR"
                         }
                     )
@@ -218,83 +234,126 @@ class BotService(
         }
         execute(message)
     }
-    fun handleMessage(message: Message, chatId: Long) {
-        val messageType = when {
-            message.text != null -> MessageType.TEXT
-            message.voice != null -> MessageType.VOICE
-            message.videoNote != null -> MessageType.VIDEO_NOTE
-            message.audio != null -> MessageType.AUDIO
-            message.video != null -> MessageType.VIDEO
-            message.photo != null -> MessageType.PHOTO
-            message.sticker != null -> MessageType.STICKER
-            message.animation != null -> MessageType.GIF
-            else -> MessageType.UNKNOWN
-        }
-
-        val fileId = when {
-            message.voice != null -> message.voice.fileId
-            message.videoNote != null -> message.videoNote.fileId
-            message.audio != null -> message.audio.fileId
-            message.video != null -> message.video.fileId
-            message.photo != null -> message.photo.firstOrNull()?.fileId
-            message.sticker != null -> message.sticker.fileId
-            message.animation != null -> message.animation.fileId
-            else -> null
-        }
-
-        val mediaUrl = if (messageType in listOf(MessageType.VOICE, MessageType.AUDIO, MessageType.VIDEO, MessageType.PHOTO)) {
-            getFileUrl(fileId!!)
-        } else {
-            null
-        }
-
-        val maxFileSize = 10 * 1024 * 1024 // 10 MB
-        val fileSize = fileId?.let { getFileSize(it) } ?: 0
-
-        if (fileSize > maxFileSize) {
-            val sendMessage = SendMessage().apply {
-                this.chatId = message.chatId.toString()
-                this.text = "Yuborish mumkin bo'lgan file'ning maksimal hajmi 10 MB"
-            }
-            execute(sendMessage)
-            return
-        }
-
-        val textMessage = message.text
-        val messageEntity = MessagesEntity(
-            user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!,
-            text = textMessage,
-            fileId = fileId,
-            mediaUrl = mediaUrl,
-            messageType = messageType,
-            session = sessionRepository.findByChatIdAndIsActiveTrue(chatId)!!
-        )
-
-        messageRepository.save(messageEntity)
-    }
-
-
-    fun getFileSize(fileId: String): Long {
-        val file = execute(GetFile(fileId))
-        val fileUrl = "https://api.telegram.org/file/bot${botToken}/${file.filePath}"
-        val urlConnection = URL(fileUrl).openConnection()
-        urlConnection.connect()
-        return urlConnection.contentLengthLong
-    }
-    fun getFileUrl(fileId: String): String {
-        val getFile = GetFile(fileId)
-        val file = execute(getFile)
-        return "https://api.telegram.org/file/bot${botToken}/${file.filePath}"
-    }
 
     fun createSessionForClient(client: UserEntity): Session {
         val session = Session(
             client = client,
-            isActive = true,
+            status = SessionStatus.PENDING,
             operator = null
         )
         return sessionRepository.save(session)
     }
+    fun workingOfOperator(update: Update, chatId: Long) {
+        val language = userService.getLanguages(chatId)
+        val user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!! //todo exceptin yozish kerak
+        if (update.hasCallbackQuery() && update.callbackQuery.data == "START_WORK"){
+            user.status = Status.BUSY
+            userRepository.save(user)
+            sendStartWorkButton(chatId)
+        }
+
+    }
+    private fun sendPendingMessage(operatorChatId: Long){
+        val session = sessionRepository.findFirstPendingSession()!!
+        session.status = SessionStatus.PROCESSING
+        sendSessionMessagesToChat(session.id!!, operatorChatId)
+
+    }
+    private fun sendStartWorkButton(chatId: Long) {
+        val message = SendMessage().apply {
+        this.chatId = chatId.toString()
+        text = getMessage(MessageKeys.START_WORK.name, languageCodes[chatId]!!)
+        replyMarkup = InlineKeyboardMarkup().apply {
+            keyboard = listOf(
+                listOf(
+                    InlineKeyboardButton(
+                        getMessage(MessageKeys.START_WORK_BUTTON.name, languageCodes[chatId]!!)).apply {
+                        callbackData = "START_WORK"
+                    }
+                )
+            )
+        }
+    }
+        execute(message)}
+
+
+    private fun deleteMessage(chatId: Long, messageId: Int) {
+        val deletedMessage = DeleteMessage().apply {
+            this.messageId = messageId
+            this.chatId = chatId.toString()
+        }
+        execute(deletedMessage)
+    }
+    private fun sendTextMessage(chatId: Long, messageText: String) {
+        val message = SendMessage().apply {
+            this.chatId = chatId.toString()
+            this.text = messageText
+        }
+        execute(message)
+    }
+    fun sendMessageToChat(message: MessagesEntity, targetChatId: Long) {
+        try {
+            when {
+                // Matnli xabarni yuborish
+                message.text != null -> {
+                    val sendMessage = SendMessage()
+                    sendMessage.chatId = targetChatId.toString()
+                    sendMessage.text = message.text!!
+                    message.replyToMessageId?.let { sendMessage.replyToMessageId = it }
+                    execute(sendMessage)
+                }
+
+                // Media fayl yuborish
+                message.fileId != null -> when (message.messageType) {
+                    MessageType.PHOTO -> {
+                        val sendPhoto = SendPhoto()
+                        sendPhoto.chatId = targetChatId.toString()
+                        sendPhoto.photo = InputFile(message.fileId)
+                        message.replyToMessageId?.let { sendPhoto.replyToMessageId = it }
+                        execute(sendPhoto)
+                    }
+                    MessageType.VIDEO -> {
+                        val sendVideo = SendVideo()
+                        sendVideo.chatId = targetChatId.toString()
+                        sendVideo.video = InputFile(message.fileId)
+                        message.replyToMessageId?.let { sendVideo.replyToMessageId = it }
+                        execute(sendVideo)
+                    }
+                    MessageType.VOICE -> {
+                        val sendVoice = SendVoice()
+                        sendVoice.chatId = targetChatId.toString()
+                        sendVoice.voice = InputFile(message.fileId)
+                        message.replyToMessageId?.let { sendVoice.replyToMessageId = it }
+                        execute(sendVoice)
+                    }
+
+                    else -> println("Unsupported media type: ${message.messageType}")
+                }
+
+                // Lokatsiya yuborish
+                message.latitude != null && message.longitude != null -> {
+                    val sendLocation = SendLocation()
+                    sendLocation.chatId = targetChatId.toString()
+                    sendLocation.latitude = message.latitude!!
+                    sendLocation.longitude = message.longitude!!
+                    message.replyToMessageId?.let { sendLocation.replyToMessageId = it }
+                    execute(sendLocation)
+                }
+
+                else -> println("Message content is empty: ${message.messageId}")
+            }
+        } catch (e: TelegramApiException) {
+            println("Error while sending message ${message.messageId}: ${e.message}")
+        }
+    }
+    fun sendSessionMessagesToChat(sessionId: Long, targetChatId: Long) {
+        val messages = messageRepository.findAllBySessionIdOrderByCreatedAtAsc(sessionId)
+        for (message in messages) {
+            sendMessageToChat(message, targetChatId)
+        }
+    }
+
+
 
 
 }
