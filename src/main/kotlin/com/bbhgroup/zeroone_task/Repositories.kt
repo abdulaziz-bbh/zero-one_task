@@ -15,6 +15,7 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
+import java.util.Date
 
 @NoRepositoryBean
 interface BaseRepository<T : BaseEntity> : JpaRepository<T, Long>, JpaSpecificationExecutor<T> {
@@ -61,67 +62,118 @@ class BaseRepositoryImpl<T : BaseEntity>(
 interface UserRepository : BaseRepository<UserEntity> {
     fun countByRole(role: Role): Long
 
-    @Query("""
+    @Query(
+        """
     select count(u) > 0 
     from users u 
     where u.id = :id
     and u.role = 'USER'
-""")
+"""
+    )
     fun existsByClientId(@Param("id") id: Long?): Boolean
     fun findByPhoneNumberAndDeletedFalse(phoneNumber: String): UserEntity?
 
 
-    @Query("""
+    @Query(
+        """
     select count(u) > 0 
     from users u 
     where u.id = :id
     and u.role = 'OPERATOR'
-""")
+"""
+    )
     fun existsByOperatorId(@Param("id") id: Long?): Boolean
+
     @Query("select u from users as u where u.chatId=:chatId and u.deleted=false")
     fun findUserEntityByChatIdAndDeletedFalse(chatId: Long): UserEntity?
+
     @Query("select u from users as u where u.deleted=false and u.phoneNumber=:phoneNumber and u.id=:id")
     fun findUserEntityByPhoneNumberAndDeletedFalse(id: Long, phoneNumber: String): UserEntity?
+
     @Query("select u from users u where u.deleted=false and u.role=:role and u.createdAt between :startTime and :endTime")
-    fun findByRoleAndCreatedAtBetween(role:Role ,startTime: LocalDateTime, endTime: LocalDateTime, pageable: Pageable): Page<UserEntity>
+    fun findByRoleAndCreatedAtBetween(
+        role: Role,
+        startTime: LocalDateTime,
+        endTime: LocalDateTime,
+        pageable: Pageable
+    ): Page<UserEntity>
+
     @Query("select u from users as u where u.deleted=false and u.role=:role")
-    fun findUserEntityByRoleAndDeletedFalse(role: Role, pageable: Pageable):Page<UserEntity>
+    fun findUserEntityByRoleAndDeletedFalse(role: Role, pageable: Pageable): Page<UserEntity>
+
     @Query("select u from users u where u.deleted=false and u.createdAt between :startTime and :endTime")
-    fun findUserEntityByCreatedAtBetween(startTime: LocalDateTime, endTime: LocalDateTime, pageable: Pageable):Page<UserEntity>
+    fun findUserEntityByCreatedAtBetween(
+        startTime: LocalDateTime,
+        endTime: LocalDateTime,
+        pageable: Pageable
+    ): Page<UserEntity>
+
     @Query("select u from users as u where u.deleted=false and u.id=:id and u.role=:role")
-    fun findUserEntityByIdAndRoleAndDeletedFalse(id: Long,role: Role):UserEntity?
+    fun findUserEntityByIdAndRoleAndDeletedFalse(id: Long, role: Role): UserEntity?
 
 
     fun existsByChatId(chatId: Long): Boolean
 }
 
 @Repository
-interface SessionRepository : BaseRepository<Session>{
+interface SessionRepository : BaseRepository<Session> {
+    fun findAllByCreatedAtBetweenAndDeletedFalseOrderByCreatedAtDesc(
+        beginDate: Date,
+        endDate: Date
+    ): List<Session>
 
-    @Query("""
+    fun findAllByIdAndCreatedAtBetweenAndDeletedFalseOrderByCreatedAtDesc(
+        sessionId: Long,
+        beginDate: Date,
+        endDate: Date
+    ): List<Session>
+
+    fun findAllByClientIdAndCreatedAtBetweenAndDeletedFalseOrderByCreatedAtDesc(
+        clientId: Long,
+        beginDate: Date,
+        endDate: Date
+    ): List<Session>
+
+    fun findAllByOperatorIdAndCreatedAtBetweenAndDeletedFalseOrderByCreatedAtDesc(
+        operator: Long,
+        beginDate: Date,
+        endDate: Date
+    ): List<Session>
+
+    @Query(
+        """
         select s from sessions s where s.client.chatId = :chatId and s.status = 'PENDING'
-    """)
+    """
+    )
     fun findByChatIdAndIsActiveTrue(chatId: Long): Session?
 
     @Query("select s from sessions s where s.status = 'PENDING' order by s.createdAt asc ")
     fun findFirstPendingSession(): Session?
     fun findAllByClientIdAndDeletedFalseOrderByCreatedAtDesc(clientId: Long): List<Session>
     fun findAllByOperatorIdAndDeletedFalseOrderByCreatedAtDesc(operatorId: Long): List<Session>
-    @Query("""
+
+    @Query(
+        """
     select count(s) > 0 
     from sessions s 
     where s.id = :id
-""")
+"""
+    )
     fun existsBySessionId(@Param("id") id: Long?): Boolean
+
     @Query("select s from sessions as s where s.deleted=false and s.createdAt between :startTime and :endTime ")
-    fun findSessionByCreatedAtBetween(startTime: LocalDateTime, endTime: LocalDateTime,pageable: Pageable):Page<Session>
+    fun findSessionByCreatedAtBetween(
+        startTime: LocalDateTime,
+        endTime: LocalDateTime,
+        pageable: Pageable
+    ): Page<Session>
+
     @Query("select s from sessions as s where s.deleted=false and s.isActive=true order by s.rate asc")
-    fun findAllByRateAndDeletedFalseAndActiveTrue(pageable: Pageable):Page<Session>
+    fun findAllByRateAndDeletedFalseAndActiveTrue(pageable: Pageable): Page<Session>
 }
 
 @Repository
 interface MessageRepository : BaseRepository<MessagesEntity> {
     fun findAllBySessionIdAndDeletedFalseOrderByCreatedAtAsc(sessionId: Long): List<MessagesEntity>
-
     fun findAllBySessionIdOrderByCreatedAtAsc(sessionId: Long): List<MessagesEntity>
 }
