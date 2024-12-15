@@ -1,7 +1,5 @@
 package com.bbhgroup.zeroone_task
 
-import jakarta.annotation.Nonnull
-
 
 data class BaseMessage(val code: Int, val message: String?)
 
@@ -64,7 +62,6 @@ data class UserCreateRequest(
 }
 
 data class UserResponse(
-
     val id: Long,
     val fullName: String,
     val phoneNumber: String,

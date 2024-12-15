@@ -51,6 +51,8 @@ interface SessionService {
     fun getAll(startTime: String?,
                endTime: String?,
                pageable: Pageable):Page<SessionResponse>
+
+    fun findAllByRate(pageable: Pageable):Page<SessionResponse>
 }
 
 @Service
@@ -357,5 +359,10 @@ class MessageServiceImpl(
                 )
             }
         }
-}
+        override fun findAllByRate(pageable: Pageable): Page<SessionResponse> {
+            return sessionRepository.findAllByRateAndDeletedFalseAndActiveTrue(pageable).map {
+                SessionResponse.toResponse(it)
+            }
+        }
+    }
 

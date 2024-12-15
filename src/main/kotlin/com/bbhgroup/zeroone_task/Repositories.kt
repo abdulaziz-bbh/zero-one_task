@@ -115,6 +115,8 @@ interface SessionRepository : BaseRepository<Session>{
     fun existsBySessionId(@Param("id") id: Long?): Boolean
     @Query("select s from sessions as s where s.deleted=false and s.createdAt between :startTime and :endTime ")
     fun findSessionByCreatedAtBetween(startTime: LocalDateTime, endTime: LocalDateTime,pageable: Pageable):Page<Session>
+    @Query("select s from sessions as s where s.deleted=false and s.isActive=true order by s.rate asc")
+    fun findAllByRateAndDeletedFalseAndActiveTrue(pageable: Pageable):Page<Session>
 }
 
 @Repository
