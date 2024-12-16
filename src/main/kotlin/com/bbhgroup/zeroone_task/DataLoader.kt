@@ -20,7 +20,7 @@ class DataLoader(
                 phoneNumber = adminPhoneNumber,
                 chatId = 999999999L,
                 role = Role.ADMIN,
-                language = setOf(Languages.EN)
+                language = mutableSetOf(Languages.EN)
             )
             userRepository.save(admin)
             println("Admin user loaded")

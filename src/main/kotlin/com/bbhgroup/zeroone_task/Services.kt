@@ -11,6 +11,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Message
 import java.net.URL
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 
@@ -67,7 +68,6 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
             userRepository.save(this.toEntity(Role.USER,Status.NOT_WORKING, BotSteps.START))
         }
     }
-
     override fun getOne(id: Long): UserResponse {
         return userRepository.findByIdAndDeletedFalse(id)?.let {
             UserResponse.toResponse(it)
@@ -77,46 +77,60 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
     override fun deleteOne(id: Long) {
         userRepository.trash(id) ?: throw UserNotFoundException()
     }
+    companion object {
+        private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    }
 
     override fun getAll(
-        role: String?,
-        startTime: String?,
-        endTime: String?,
-        pageable: Pageable
+            role: String?,
+            startTime: String?,
+            endTime: String?,
+            pageable: Pageable
     ): Page<UserResponse> {
-        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
         val start = startTime?.let { LocalDate.parse(it, formatter).atStartOfDay() }
         val end = endTime?.let { LocalDate.parse(it, formatter).atTime(23, 59, 59) }
         val validRole = role?.let {
-            try {
-                Role.valueOf(it.uppercase(Locale.getDefault()))
-            } catch (e: IllegalArgumentException) {
-                throw UserBadRequestException()
-            }
+            runCatching { Role.valueOf(it.uppercase(Locale.getDefault())) }
+                    .getOrElse { throw UserBadRequestException() }
         }
+
         val users = when {
             validRole != null && start != null && end != null ->
-                userRepository.findByRoleAndCreatedAtBetween(validRole, start, end, pageable)
+                findByRoleAndDateRange(validRole, start, end, pageable)
 
             validRole != null ->
-                userRepository.findUserEntityByRoleAndDeletedFalse(validRole, pageable)
+                findByRoleOnly(validRole, pageable)
 
             start != null && end != null ->
-                userRepository.findUserEntityByCreatedAtBetween(start, end, pageable)
+                findByDateRangeOnly(start, end, pageable)
 
-            else ->
-                userRepository.findAllNotDeletedForPageable(pageable)
+            else -> findAllNotDeleted(pageable)
         }
+
         return users.map { user ->
             UserResponse(
-                id = user.id ?: throw IllegalStateException("User ID cannot be null"),
-                fullName = user.fullName,
-                phoneNumber = user.phoneNumber,
-                chatId = user.chatId,
-                language = user.language
+                    id = user.id ?: error("User ID cannot be null"),
+                    fullName = user.fullName,
+                    phoneNumber = user.phoneNumber,
+                    chatId = user.chatId,
+                    language = user.language
             )
         }
     }
+
+    private fun findByRoleAndDateRange(role: Role, start: LocalDateTime, end: LocalDateTime, pageable: Pageable) =
+            userRepository.findByRoleAndCreatedAtBetween(role, start, end, pageable)
+
+    private fun findByRoleOnly(role: Role, pageable: Pageable) =
+            userRepository.findUserEntityByRoleAndDeletedFalse(role, pageable)
+
+    private fun findByDateRangeOnly(start: LocalDateTime, end: LocalDateTime, pageable: Pageable) =
+            userRepository.findUserEntityByCreatedAtBetween(start, end, pageable)
+
+    private fun findAllNotDeleted(pageable: Pageable) =
+            userRepository.findAllNotDeletedForPageable(pageable)
+
+
 
     override fun update(id: Long, request: UserUpdateRequest) {
         val user = userRepository.findByIdAndDeletedFalse(id) ?: throw UserNotFoundException()
@@ -146,7 +160,7 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
         val user = UserEntity(
             chatId = chatId,
             fullName = fullName!!,
-            language = setOf(Languages.valueOf(language!!)),
+            language = mutableSetOf(Languages.valueOf(language!!)),
             phoneNumber = phone!!
         )
         userRepository.save(user)
@@ -163,14 +177,27 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
     }
 
     override fun addLanguageToOperator(id: Long, lang: String) {
-        val user = userRepository.findByIdAndDeletedFalse(id)?:throw UserNotFoundException()
-        if (user.role==Role.OPERATOR){
-            user.language.plus(lang)
+        val user = userRepository.findByIdAndDeletedFalse(id) ?: throw UserNotFoundException()
+        val language = try {
+            Languages.valueOf(lang.uppercase())
+        } catch (e: IllegalArgumentException) {
+            throw UserBadRequestException()
+        }
+        if (user.role == Role.OPERATOR) {
+            if (user.language.contains(language)) {
+                throw DataHasAlreadyExistsException()
+            }
+            val updatedLanguages = user.language.toMutableSet().apply {
+                add(language)
+            }
+            user.language = updatedLanguages
             userRepository.save(user)
-        }else{
+        } else {
             throw UserBadRequestException()
         }
     }
+
+
 
 
 }
