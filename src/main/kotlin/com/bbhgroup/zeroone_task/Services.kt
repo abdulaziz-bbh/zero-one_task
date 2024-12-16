@@ -53,11 +53,6 @@ interface SessionService {
                endTime: String?,
                pageable: Pageable):Page<SessionResponse>
     fun getFirPending():Session?
-    fun getAll(
-        startTime: String?,
-        endTime: String?,
-        pageable: Pageable
-    ): Page<SessionResponse>
 
     fun findAllByRate(pageable: Pageable): Page<SessionResponse>
 }
@@ -163,7 +158,7 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
 
     @Transactional
     override fun getLanguages(chatId: Long): String {
-        val user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!//todo exception qo'shish kerak
+        val user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId) ?: throw UserNotFoundException()
         return user.language.first().key
     }
 }
@@ -351,24 +346,6 @@ class MessageServiceImpl(
 
 
 }
-    @Service
-    class SessionServiceImpl(
-        private val sessionRepository: SessionRepository,
-        private val userRepository: UserRepository
-    ) : SessionService {
-        @Transactional
-        override fun create(request: SessionCreateRequest) {
-            val user = userRepository.findByIdAndDeletedFalse(request.userId) ?: throw UserNotFoundException()
-            val operator = userRepository.findUserEntityByIdAndRoleAndDeletedFalse(request.operatorId, Role.OPERATOR)
-                ?: throw UserNotFoundException()
-            val session = Session(
-                client = user,
-                operator = operator,
-                status = SessionStatus.PENDING,
-                rate = request.rate)
-            sessionRepository.save(session)
-        }
-
 
 @Service
 class SessionServiceImpl(
@@ -385,7 +362,6 @@ class SessionServiceImpl(
             operator = operator,
             status = SessionStatus.PENDING,
             rate = request.rate,
-            commentForRate = request.commentForRate
         )
         sessionRepository.save(session)
     }
@@ -436,4 +412,5 @@ class SessionServiceImpl(
         }
     }
 }
+
 

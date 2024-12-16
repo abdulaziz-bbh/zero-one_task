@@ -150,7 +150,7 @@ interface SessionRepository : BaseRepository<Session> {
     @Query(value = "SELECT * FROM sessions s WHERE s.status = 'PENDING' ORDER BY s.created_at ASC LIMIT 1", nativeQuery = true)
     fun findFirstPendingSession(): Session?
 
-    @Query(value = "select s.* from sessions s join users c on s.client_id = c.id where c.chat_id = 1091691519 and s.status = 'COMPLETED' order by s.created_at desc limit 1", nativeQuery = true)
+    @Query(value = "select s.* from sessions s join users c on s.client_id = c.id where c.chat_id = :chatId and s.status = 'COMPLETED' order by s.created_at desc limit 1", nativeQuery = true)
     fun findLastCompletedSession(chatId: Long): Session?
 
     fun findAllByClientIdAndDeletedFalseOrderByCreatedAtDesc(clientId: Long): List<Session>
@@ -176,15 +176,9 @@ interface SessionRepository : BaseRepository<Session> {
     @Query("""
         select s from sessions s where s.client.chatId =:chatId and s.status = 'PROCESSING'
     """)
-    fun findProcessingSessionsByClientId(@Param("chatId")chatId: Long): Session
-  
-    fun findSessionByCreatedAtBetween(
-        startTime: LocalDateTime,
-        endTime: LocalDateTime,
-        pageable: Pageable
-    ): Page<Session>
+    fun findProcessingSessionsByClientId(@Param("chatId")chatId: Long): Session?
 
-    @Query("select s from sessions as s where s.deleted=false and s.isActive=true order by s.rate asc")
+    @Query("select s from sessions as s where s.deleted=false and s.status = 'COMPLETED' order by s.rate asc")
     fun findAllByRateAndDeletedFalseAndActiveTrue(pageable: Pageable): Page<Session>
 }
 
