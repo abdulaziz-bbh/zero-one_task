@@ -43,14 +43,17 @@ class UserController(val userService: UserService) {
 
     @GetMapping("get-all")
     fun getAll(
-        @RequestParam(required = false) role: String?,
-        @RequestParam(required = false) startTime: String?,
-        @RequestParam(required = false) endTime: String?,
-        pageable: Pageable
+            @RequestParam(required = false) role: String?,
+            @RequestParam(required = false) startTime: String?,
+            @RequestParam(required = false) endTime: String?,
+            pageable: Pageable
     ) = userService.getAll(role, startTime, endTime, pageable)
 
     @PutMapping
     fun changeRole(@RequestParam id: Long, @RequestParam role: String) = userService.changeRole(id, role)
+
+    @PutMapping("{id}")
+    fun addLangToOperator(@PathVariable id: Long, lang: String) = userService.addLanguageToOperator(id, lang)
 }
 
 
@@ -66,9 +69,9 @@ class SessionController(val sessionService: SessionService) {
 
     @GetMapping
     fun getAll(
-        @RequestParam(required = false) startTime: String?,
-        @RequestParam(required = false) endTime: String?,
-        pageable: Pageable
+            @RequestParam(required = false) startTime: String?,
+            @RequestParam(required = false) endTime: String?,
+            pageable: Pageable
     ) = sessionService.getAll(startTime, endTime, pageable)
 
 }

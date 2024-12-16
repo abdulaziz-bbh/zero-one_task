@@ -29,32 +29,33 @@ interface UserService {
     fun changeRole(id: Long, role: String)
     fun saveUser(chatId: Long, fullName: String?, language: String?, phone: String?)
     fun existsByChatId(chatId: Long): Boolean
-    fun getLanguages(chatId: Long): String
+    fun getLanguages(chatId: Long):String
+    fun addLanguageToOperator(id: Long, lang: String)
 }
 
 
 interface MessageService {
     fun saveClientOperatorMessage(request: MessageDto)
     fun deleteMessage(id: Long, clientId: Long)
-    fun findAllBetweenDates(request: MessageDateBetweenDto):List<MessageSessionResponse>
     fun findAllBySessionId(sessionId: Long): MessageSessionResponse
     fun findAllByClientId(clientId: Long): List<MessageSessionResponse>
     fun findAllByOperatorId(operatorId: Long): List<MessageSessionResponse>
     fun getFileUrl(fileId: String): String
     fun getFileSize(fileId: String): Long
     fun handleMessage(message: Message, chatId: Long)
+    fun findAllBetweenDates(request: MessageDateBetweenDto):List<MessageSessionResponse>
 }
 
 interface SessionService {
     fun create(request: SessionCreateRequest)
-    fun getOne(id: Long): SessionResponse
+    fun getOne( id: Long):SessionResponse
     fun deleteOne(id: Long)
     fun getAll(startTime: String?,
                endTime: String?,
                pageable: Pageable):Page<SessionResponse>
-    fun getFirPending():Session?
 
-    fun findAllByRate(pageable: Pageable): Page<SessionResponse>
+    fun findAllByRate(pageable: Pageable):Page<SessionResponse>
+    fun getFirPending():Session?
 }
 
 @Service
@@ -63,7 +64,7 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
         request.run {
             val user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)
             if (user != null) throw UserHasAlreadyExistsException()
-            userRepository.save(this.toEntity(Role.USER, Status.NOT_WORKING, BotSteps.START))
+            userRepository.save(this.toEntity(Role.USER,Status.NOT_WORKING, BotSteps.START))
         }
     }
 
@@ -141,7 +142,6 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
         userEntity.role = validRole
         userRepository.save(userEntity)
     }
-
     override fun saveUser(chatId: Long, fullName: String?, language: String?, phone: String?) {
         val user = UserEntity(
             chatId = chatId,
@@ -158,9 +158,21 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
 
     @Transactional
     override fun getLanguages(chatId: Long): String {
-        val user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId) ?: throw UserNotFoundException()
+        val user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)?:throw UserNotFoundException()
         return user.language.first().key
     }
+
+    override fun addLanguageToOperator(id: Long, lang: String) {
+        val user = userRepository.findByIdAndDeletedFalse(id)?:throw UserNotFoundException()
+        if (user.role==Role.OPERATOR){
+            user.language.plus(lang)
+            userRepository.save(user)
+        }else{
+            throw UserBadRequestException()
+        }
+    }
+
+
 }
 
 @Service
@@ -258,8 +270,7 @@ class MessageServiceImpl(
             MessageSessionResponse.toResponse(session, messageList)
         }.toList()
     }
-    
-    override fun  handleMessage(message: Message, chatId: Long) {
+    override fun handleMessage(message: Message, chatId: Long) {
         val messageType = when {
             message.text != null -> MessageType.TEXT
             message.voice != null -> MessageType.VOICE
@@ -365,7 +376,7 @@ class SessionServiceImpl(
         )
         sessionRepository.save(session)
     }
-    
+
         @Transactional
         override fun getFirPending():Session?{
             return sessionRepository.findFirstPendingSession()
