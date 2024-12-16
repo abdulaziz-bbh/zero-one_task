@@ -49,6 +49,10 @@ interface SessionService {
     fun create(request: SessionCreateRequest)
     fun getOne(id: Long): SessionResponse
     fun deleteOne(id: Long)
+    fun getAll(startTime: String?,
+               endTime: String?,
+               pageable: Pageable):Page<SessionResponse>
+    fun getFirPending():Session?
     fun getAll(
         startTime: String?,
         endTime: String?,
@@ -157,6 +161,7 @@ class UserServiceImpl(private val userRepository: UserRepository) : UserService 
         return userRepository.existsByChatId(chatId)
     }
 
+    @Transactional
     override fun getLanguages(chatId: Long): String {
         val user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!//todo exception qo'shish kerak
         return user.language.first().key
@@ -258,8 +263,8 @@ class MessageServiceImpl(
             MessageSessionResponse.toResponse(session, messageList)
         }.toList()
     }
-
-    override fun handleMessage(message: Message, chatId: Long) {
+    
+    override fun  handleMessage(message: Message, chatId: Long) {
         val messageType = when {
             message.text != null -> MessageType.TEXT
             message.voice != null -> MessageType.VOICE
@@ -346,6 +351,24 @@ class MessageServiceImpl(
 
 
 }
+    @Service
+    class SessionServiceImpl(
+        private val sessionRepository: SessionRepository,
+        private val userRepository: UserRepository
+    ) : SessionService {
+        @Transactional
+        override fun create(request: SessionCreateRequest) {
+            val user = userRepository.findByIdAndDeletedFalse(request.userId) ?: throw UserNotFoundException()
+            val operator = userRepository.findUserEntityByIdAndRoleAndDeletedFalse(request.operatorId, Role.OPERATOR)
+                ?: throw UserNotFoundException()
+            val session = Session(
+                client = user,
+                operator = operator,
+                status = SessionStatus.PENDING,
+                rate = request.rate)
+            sessionRepository.save(session)
+        }
+
 
 @Service
 class SessionServiceImpl(
@@ -366,11 +389,16 @@ class SessionServiceImpl(
         )
         sessionRepository.save(session)
     }
+    
+        @Transactional
+        override fun getFirPending():Session?{
+            return sessionRepository.findFirstPendingSession()
+        }
+        override fun getOne(id: Long): SessionResponse {
+            return sessionRepository.findByIdAndDeletedFalse(id)?.let {
+                SessionResponse.toResponse(it)
+            } ?: throw SessionNotFoundMException()
 
-    override fun getOne(id: Long): SessionResponse {
-        return sessionRepository.findByIdAndDeletedFalse(id)?.let {
-            SessionResponse.toResponse(it)
-        } ?: throw SessionNotFoundMException()
     }
 
     override fun deleteOne(id: Long) {
