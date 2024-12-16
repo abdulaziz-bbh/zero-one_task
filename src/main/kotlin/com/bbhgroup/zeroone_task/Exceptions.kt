@@ -10,13 +10,17 @@ sealed class BillingExceptionHandler() : RuntimeException() {
     fun getErrorMessage(resourceBundleMessageSource: ResourceBundleMessageSource): BaseMessage {
         val message = try {
             resourceBundleMessageSource.getMessage(
-                errorCode().name, getArguments(), LocaleContextHolder.getLocale()
+                    errorCode().name, getArguments(), LocaleContextHolder.getLocale()
             )
         } catch (e: Exception) {
             e.message ?: "Unknown error"
         }
         return BaseMessage(errorCode().code, message)
     }
+}
+
+class DataHasAlreadyExistsException : BillingExceptionHandler() {
+    override fun errorCode() = ErrorCodes.DATA_HAS_ALREADY_EXISTS
 }
 
 class UserHasAlreadyExistsException : BillingExceptionHandler() {
@@ -30,8 +34,9 @@ class UserNotFoundException : BillingExceptionHandler() {
         return ErrorCodes.USER_NOT_FOUND
     }
 }
-class UserBadRequestException: BillingExceptionHandler(){
-    override fun errorCode()= ErrorCodes.USER_BAD_REQUEST
+
+class UserBadRequestException : BillingExceptionHandler() {
+    override fun errorCode() = ErrorCodes.USER_BAD_REQUEST
 }
 
 class InvalidFileIdException : BillingExceptionHandler() {
@@ -72,20 +77,8 @@ class InvalidSessionClientIdException : BillingExceptionHandler() {
     override fun errorCode() = ErrorCodes.INVALID_SESSION_CLIENT_ID
 }
 
-class EmptyQueueClientIdException : BillingExceptionHandler() {
-    override fun errorCode() = ErrorCodes.EMPTY_QUEUE_CLIENT_ID
-}
-
-class QueueNotFoundException : BillingExceptionHandler() {
-    override fun errorCode() = ErrorCodes.QUE_NOT_FOUND
-}
-
 class EmptyListMException : BillingExceptionHandler() {
     override fun errorCode() = ErrorCodes.EMPTY_LIST_M
-}
-
-class QueueOwnerException : BillingExceptionHandler() {
-    override fun errorCode() = ErrorCodes.QUE_OWNER_EXCEPTION
 }
 
 class InvalidMessageTypeException : BillingExceptionHandler() {
@@ -101,19 +94,6 @@ class OperatorNotFoundException : BillingExceptionHandler() {
 class SessionNotFoundException : BillingExceptionHandler() {
     override fun errorCode(): ErrorCodes {
         return ErrorCodes.SESSION_NOT_FOUND
-    }
-}
-
-
-class RatingAlreadyExistsException : BillingExceptionHandler() {
-    override fun errorCode(): ErrorCodes {
-        return ErrorCodes.RATING_ALREADY_EXISTS
-    }
-}
-
-class RatingNotFoundException : BillingExceptionHandler() {
-    override fun errorCode(): ErrorCodes {
-        return ErrorCodes.RATING_NOT_FOUND
     }
 }
 

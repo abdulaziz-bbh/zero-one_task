@@ -36,7 +36,7 @@ data class UserCreateRequest(
     val fullName: String,
     val phoneNumber: String,
     val chatId: Long,
-    val language: Set<Languages>
+    val language: MutableSet<Languages>
 ) {
     fun toEntity(role: Role, status: Status, botSteps: BotSteps): UserEntity {
         return UserEntity(fullName, phoneNumber, chatId, role, language, status, botSteps)
