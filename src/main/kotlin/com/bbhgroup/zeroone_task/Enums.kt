@@ -63,7 +63,11 @@ enum class MessageKeys{
     TEXT_CONNECT_BUTTON_TO_OPERATOR,
     CONNECT_BUTTON_TO_OPERATOR,
     START_WORK,
-    START_WORK_BUTTON
+    START_WORK_BUTTON,
+    END_WORK,
+    END_CHAT,
+    NOT_FOUND_PENDING_CLIENT,
+    SEND_RATE_VALUE
 }
 
 enum class MessageType{
@@ -71,7 +75,6 @@ enum class MessageType{
     VOICE,
     AUDIO,
     VIDEO,
-    GAME,
     STICKER,
     GIF,
     PHOTO,

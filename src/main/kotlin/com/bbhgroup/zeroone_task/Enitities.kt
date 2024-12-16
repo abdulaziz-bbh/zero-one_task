@@ -14,15 +14,15 @@ abstract class BaseEntity(
 
 @Entity(name = "users")
 class UserEntity(
-        val fullName: String,
-        @Column(nullable = false, unique = true)
+    val fullName: String,
+    @Column(nullable = false, unique = true)
         var phoneNumber: String,
-        @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true)
         val chatId: Long,
-        @Enumerated(EnumType.STRING) var role: Role = Role.USER,
-        @ElementCollection @Enumerated(EnumType.STRING) val language: Set<Languages>,
-        @Enumerated(EnumType.STRING) var status: Status? = null,
-        @Enumerated(EnumType.STRING) var botSteps: BotSteps? = BotSteps.START
+    @Enumerated(EnumType.STRING) var role: Role = Role.USER,
+    @ElementCollection(fetch = FetchType.EAGER) @Enumerated(EnumType.STRING) val language: Set<Languages>,
+    @Enumerated(EnumType.STRING) var status: Status? = null,
+    @Enumerated(EnumType.STRING) var botSteps: BotSteps? = BotSteps.START
 ) : BaseEntity()
 
 @Entity(name = "messages")
@@ -50,7 +50,6 @@ class Session(
     @Enumerated(EnumType.STRING)
     var status: SessionStatus,
     @ManyToOne
-    val operator: UserEntity? = null,
-    val rate : Int? =null,
-    val commentForRate: String? = null,
+    var operator: UserEntity? = null,
+    var rate : Int? =null,
 ) : BaseEntity()
