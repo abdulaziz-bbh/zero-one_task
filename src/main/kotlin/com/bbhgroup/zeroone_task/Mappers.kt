@@ -18,7 +18,7 @@ class StatisticsMapper {
         sessions: List<Session>
     ): OperatorSessionStatisticsResponse {
         val totalHandledSessions = sessions.size.toLong()
-        val activeSessions = sessions.count { it.isActive }.toLong()
+        val activeSessions = sessions.count { it.status == SessionStatus.COMPLETED }.toLong()
         val ratings = sessions.mapNotNull { it.rate }
         val averageRating = if (ratings.isNotEmpty()) ratings.average() else 0.0
 
@@ -43,7 +43,7 @@ class StatisticsMapper {
 
     fun toUserStatisticsResponse(user: UserEntity, sessions: List<Session>): UserStatisticsResponse {
         val totalSessions = sessions.size.toLong()
-        val activeSessions = sessions.count { it.isActive }.toLong()
+        val activeSessions = sessions.count { it.status == SessionStatus.COMPLETED }.toLong()
         val ratings = sessions.mapNotNull { it.rate }
         val totalRatings = ratings.size.toLong()
         val averageRating = if (ratings.isNotEmpty()) ratings.average() else 0.0
