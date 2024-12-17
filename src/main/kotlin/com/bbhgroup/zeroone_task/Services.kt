@@ -49,6 +49,11 @@ interface StatisticsService {
     fun getDetailedRatings(): DetailedRatingResponse
     fun getUserStatistics(): List<UserStatisticsResponse>
     fun getTopRatedOperators(lastMonth: Boolean = true, limit: Int = 10): List<TopRatedOperatorResponse>
+
+    // Qo'shilgan methodlar
+    fun getTopRatedOperator(): TopRatedOperatorResponse
+    fun getLowestRatedOperator(): TopRatedOperatorResponse
+    fun getOperatorAverageRatings(): Map<String, Double>
 }
 
 @Service
@@ -318,4 +323,44 @@ class StatisticsServiceImpl(
             .take(limit)
     }
 
+
+    override fun getTopRatedOperator(): TopRatedOperatorResponse {
+        val allSessions = sessionRepository.findAll()
+        val operatorRatings = allSessions
+            .filter { it.operator != null }
+            .groupBy { it.operator!! }
+            .map { (operator, sessions) ->
+                val ratings = sessions.mapNotNull { it.rate }
+                val averageRating = if (ratings.isNotEmpty()) ratings.average() else 0.0
+                val totalRatings = ratings.size.toLong()
+                statisticsMapper.toTopRatedOperatorResponse(operator, averageRating, totalRatings)
+            }
+        return operatorRatings.maxByOrNull { it.averageRating } ?: throw OperatorNotFoundException()
+    }
+
+    override fun getLowestRatedOperator(): TopRatedOperatorResponse {
+        val allSessions = sessionRepository.findAll()
+        val operatorRatings = allSessions
+            .filter { it.operator != null }
+            .groupBy { it.operator!! }
+            .map { (operator, sessions) ->
+                val ratings = sessions.mapNotNull { it.rate }
+                val averageRating = if (ratings.isNotEmpty()) ratings.average() else 0.0
+                val totalRatings = ratings.size.toLong()
+                statisticsMapper.toTopRatedOperatorResponse(operator, averageRating, totalRatings)
+            }
+        return operatorRatings.minByOrNull { it.averageRating } ?: throw OperatorNotFoundException()
+    }
+
+    override fun getOperatorAverageRatings(): Map<String, Double> {
+        val allSessions = sessionRepository.findAll()
+        val averageRatings = allSessions
+            .filter { it.operator != null }
+            .groupBy { it.operator!! }
+            .mapValues { (_, sessions) ->
+                val ratings = sessions.mapNotNull { it.rate }
+                if (ratings.isNotEmpty()) ratings.average() else 0.0
+            }
+        return averageRatings.mapKeys { it.key.fullName }
+    }
 }
