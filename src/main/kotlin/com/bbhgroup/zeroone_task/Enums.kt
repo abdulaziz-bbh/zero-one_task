@@ -10,11 +10,11 @@ enum class Languages(val key: String) {
     EN("en")
 }
 
-enum class InquiriesStatus {
+enum class SessionStatus {
     PENDING,
+    PROCESSING,
     COMPLETED
 }
-
 
 enum class ErrorCodes(val code: Int) {
 
@@ -36,6 +36,7 @@ enum class ErrorCodes(val code: Int) {
     USER_NOT_FOUND(100),
     USER_ALREADY_EXISTS(101),
     USER_BAD_REQUEST(102),
+    DATA_HAS_ALREADY_EXISTS(103),
 
     OPERATOR_NOT_FOUND(200),
     SESSION_NOT_FOUND(201),
@@ -56,9 +57,34 @@ enum class MessageKeys{
     SHARE_CONTACT,
     SUCCESS_SHARE_CONTACT,
     ALREADY_REGISTERED,
-    CANCEL_CHAT
+    CANCEL_CHAT,
+    SHARE_OTHER_CONTACT,
+    SHARE_CONTACT_BUTTON,
+    WRITE_TO_OPERATOR,
+    TEXT_CONNECT_BUTTON_TO_OPERATOR,
+    CONNECT_BUTTON_TO_OPERATOR,
+    START_WORK,
+    START_WORK_BUTTON,
+    END_WORK,
+    END_CHAT,
+    NOT_FOUND_PENDING_CLIENT,
+    SEND_RATE_VALUE
 }
 
 enum class MessageType{
-    TEXT, VOICE, AUDIO, VIDEO, GAME, STICKER, GIF, PHOTO, VIDEO_NOTE, UNKNOWN
+    TEXT,
+    VOICE,
+    AUDIO,
+    VIDEO,
+    STICKER,
+    GIF,
+    PHOTO,
+    VIDEO_NOTE,
+    DOCUMENT,
+    LOCATION,
+    POLL,
+    UNKNOWN
+}
+enum class Status{
+    BUSY, FREE, NOT_WORKING
 }
