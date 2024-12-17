@@ -171,12 +171,7 @@ interface SessionRepository : BaseRepository<Session> {
         select s from  sessions s where s.client.chatId = :chatId and s.status = 'PENDING' or s.status = 'PROCESSING'
     """)
     fun findSessionByChatIdAndStatus(chatId: Long): Session?
-    @Query(
-            """
-        select s from sessions s where s.client.chatId = :chatId and s.status = 'PENDING'
-    """
-    )
-    fun findByChatIdAndIsActiveTrue(chatId: Long): Session?
+
 
 
     @Query("select s from sessions as s where s.deleted=false and s.operator=:operator")
@@ -191,15 +186,6 @@ interface SessionRepository : BaseRepository<Session> {
     fun findAllByClientIdAndDeletedFalseOrderByCreatedAtDesc(clientId: Long): List<Session>
     fun findAllByOperatorIdAndDeletedFalseOrderByCreatedAtDesc(operatorId: Long): List<Session>
 
-    @Query(
-            """
-    select count(s) > 0 
-    from sessions s 
-    where s.id = :id
-"""
-    )
-    fun existsBySessionId(@Param("id") id: Long?): Boolean
-
 
     @Query("select s from sessions s where s.createdAt between :startDate and :endDate and s.deleted = false")
     fun findSessionsByCreatedAtBetween(
@@ -210,6 +196,9 @@ interface SessionRepository : BaseRepository<Session> {
     @Query("select s from sessions s where s.client.id = :clientId")
     fun findByClientId(@Param("clientId") clientId: Long): List<Session>
 
+    @Query("""
+        select count(s) from sessions s where s.status = 'COMPLETED'
+    """)
     fun countByIsActiveTrue(): Long
   
     fun findByOperatorId(operatorId: Long): List<Session>

@@ -63,8 +63,11 @@ class BotService(
                             selectRateForSession(chatId, update.callbackQuery.data.toInt())
                             deleteMessage(chatId, update.callbackQuery.message.messageId)
                         }
-                        if (update.hasCallbackQuery()  && botSteps == BotSteps.START) {
+                        if (update.hasCallbackQuery() && botSteps == BotSteps.START) {
                             writeToOperator(update, chatId)
+                        }
+                        if (update.hasMessage()&& botSteps == BotSteps.END_CHAT) {
+                            sendConnectOperatorButton(chatId)
                         }
                         if (update.hasMessage() && botSteps == BotSteps.SENDING_MESSAGES && session == null) {
                             writeToOperator(update, chatId)
