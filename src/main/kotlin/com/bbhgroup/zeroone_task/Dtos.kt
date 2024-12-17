@@ -59,6 +59,14 @@ data class UserResponse(
     }
 }
 
+data class OperatorResponse(
+        val id: Long,
+        val fullName: String,
+        val phoneNumber: String,
+        val chatId: Long,
+        val avgRate: Double?
+)
+
 data class UserUpdateRequest(
     var fullName: String?,
     var phoneNumber: String?,
@@ -70,8 +78,7 @@ data class SessionCreateRequest(
     val operatorId: Long,
     val rate: Int,
     val commentForRate: String
-) {
-}
+)
 
 data class SessionResponse(
     val id: Long,
@@ -92,3 +99,42 @@ data class SessionResponse(
         }
     }
 }
+
+
+data class TotalSessionsResponse(
+    val totalSessions: Long,
+    val totalActiveSessions: Long
+)
+
+data class OperatorSessionStatisticsResponse(
+    val operatorId: Long,
+    val operatorName: String,
+    val totalHandledSessions: Long,
+    val averageRating: Double,
+    val activeSessions: Long
+)
+
+data class DetailedRatingResponse(
+    val totalRatings: Long,
+    val averageRating: Double,
+    val detailedRatings: Map<Int, Long>
+)
+
+data class UserStatisticsResponse(
+    val userId: Long,
+    val fullName: String,
+    val totalSessions: Long,
+    val activeSessions: Long,
+    val totalRatings: Long,
+    val averageRating: Double
+)
+
+data class TopRatedOperatorResponse(
+    val operatorId: Long,
+    val operatorName: String,
+    val averageRating: Double,
+    val totalRatings: Long
+)
+
+
+
