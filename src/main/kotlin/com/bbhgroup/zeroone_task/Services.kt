@@ -43,7 +43,7 @@ interface MessageService {
     fun findAllByOperatorId(operatorId: Long): List<MessageSessionResponse>
     fun getFileUrl(fileId: String): String
     fun getFileSize(fileId: String): Long
-    fun handleMessage(message: Message, chatId: Long)
+    fun handleMessage(message: Message, chatId: Long):MessagesEntity
     fun findAllBetweenDates(request: MessageDateBetweenDto):List<MessageSessionResponse>
 }
 
@@ -297,7 +297,7 @@ class MessageServiceImpl(
             MessageSessionResponse.toResponse(session, messageList)
         }.toList()
     }
-    override fun handleMessage(message: Message, chatId: Long) {
+    override fun handleMessage(message: Message, chatId: Long): MessagesEntity {
         val messageType = when {
             message.text != null -> MessageType.TEXT
             message.voice != null -> MessageType.VOICE
@@ -347,7 +347,7 @@ class MessageServiceImpl(
                 this.text = "Yuborish mumkin bo'lgan file'ning maksimal hajmi 10 MB"
             }
             botService.execute(sendMessage)
-            return
+            throw UserBadRequestException()
         }
 
         val textMessage = message.text
@@ -362,10 +362,11 @@ class MessageServiceImpl(
             messageType = messageType,
             latitude = message.location?.latitude,
             longitude = message.location?.longitude,
-            session = sessionRepository.findByChatIdAndIsActiveTrue(chatId)!!
+            session = sessionRepository.findSessionByChatIdAndStatus(chatId)!!
         )
 
-        messageRepository.save(messageEntity)
+        val newMessage = messageRepository.save(messageEntity)
+        return newMessage
     }
 
     override fun getFileSize(fileId: String): Long {

@@ -140,12 +140,12 @@ interface SessionRepository : BaseRepository<Session> {
         endDate: Date
     ): List<Session>
 
-    @Query(
-        """
-        select s from sessions s where s.client.chatId = :chatId and s.status = 'PENDING'
-    """
-    )
-    fun findByChatIdAndIsActiveTrue(chatId: Long): Session?
+
+
+    @Query("""
+        select s from  sessions s where s.client.chatId = :chatId and s.status = 'PENDING' or s.status = 'PROCESSING'
+    """)
+    fun findSessionByChatIdAndStatus(chatId: Long): Session?
 
     @Query(value = "SELECT * FROM sessions s WHERE s.status = 'PENDING' ORDER BY s.created_at ASC LIMIT 1", nativeQuery = true)
     fun findFirstPendingSession(): Session?
@@ -186,4 +186,12 @@ interface SessionRepository : BaseRepository<Session> {
 interface MessageRepository : BaseRepository<MessagesEntity> {
     fun findAllBySessionIdAndDeletedFalseOrderByCreatedAtAsc(sessionId: Long): List<MessagesEntity>
     fun findAllBySessionIdOrderByCreatedAtAsc(sessionId: Long): List<MessagesEntity>
+
+    @Query("""
+        select m from messages m where m.user.chatId = :chatId
+    """)
+    fun findByUserChatId(chatId: Long): MessagesEntity
+
+    fun findByNewMessageId(newMessageId: Long): MessagesEntity?
+    fun findByMessageId(messageId: Long): MessagesEntity?
 }
