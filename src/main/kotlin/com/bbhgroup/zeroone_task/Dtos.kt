@@ -99,3 +99,42 @@ data class SessionResponse(
         }
     }
 }
+
+
+data class TotalSessionsResponse(
+    val totalSessions: Long,
+    val totalActiveSessions: Long
+)
+
+data class OperatorSessionStatisticsResponse(
+    val operatorId: Long,
+    val operatorName: String,
+    val totalHandledSessions: Long,
+    val averageRating: Double,
+    val activeSessions: Long
+)
+
+data class DetailedRatingResponse(
+    val totalRatings: Long,
+    val averageRating: Double,
+    val detailedRatings: Map<Int, Long>
+)
+
+data class UserStatisticsResponse(
+    val userId: Long,
+    val fullName: String,
+    val totalSessions: Long,
+    val activeSessions: Long,
+    val totalRatings: Long,
+    val averageRating: Double
+)
+
+data class TopRatedOperatorResponse(
+    val operatorId: Long,
+    val operatorName: String,
+    val averageRating: Double,
+    val totalRatings: Long
+)
+
+
+
