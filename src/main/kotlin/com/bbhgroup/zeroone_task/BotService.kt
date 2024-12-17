@@ -8,6 +8,7 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.methods.CopyMessage
 import org.telegram.telegrambots.meta.api.methods.send.*
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
@@ -48,6 +49,7 @@ class BotService(
         val chatId = when {
             update.hasMessage() -> update.message.chatId
             update.hasCallbackQuery() -> update.callbackQuery.message.chatId
+            update.hasEditedMessage() -> update.editedMessage.chatId
             else -> null
         }
 
@@ -73,6 +75,9 @@ class BotService(
                         if (update.hasMessage() && botSteps == BotSteps.SENDING_MESSAGES && session != null){
                             sendMessageToOperator(chatId, update.message)
                         }
+                        if (update.hasEditedMessage()){
+                            handleEditMessage(update, Role.USER)
+                        }
                     }
                     if (role == Role.OPERATOR) {
                         if (update.hasMessage() && update.message.text == "/start"){
@@ -94,6 +99,9 @@ class BotService(
                         }
                         if (update.hasMessage() && status == Status.BUSY) {
                             sendMessageToClient(chatId, update.message)
+                        }
+                        if (update.hasEditedMessage()){
+                            handleEditMessage(update, Role.OPERATOR)
                         }
                     }
                 }
@@ -226,7 +234,7 @@ class BotService(
             }else {
                 getMessage(MessageKeys.WRITE_TO_OPERATOR.name, languageCodes[chatId]!!)
             }        }
-        sessionRepository.findByChatIdAndIsActiveTrue(client.chatId)
+        sessionRepository.findSessionByChatIdAndStatus(client.chatId)
             ?: createSessionForClient(client)
         execute(connectMessage)
     }
@@ -291,7 +299,7 @@ class BotService(
         val sendMessage = SendMessage().apply {
             this.chatId = operatorChatId.toString()
             this.replyMarkup = createEndChatButtons(operatorChatId)
-            this.text = "chat id : $clientChatId"
+            this.text = "client: ${userRepository.findUserEntityByChatIdAndDeletedFalse(clientChatId)?.fullName!!}"
         }
         execute(sendMessage)
     }
@@ -310,38 +318,74 @@ class BotService(
     fun sendSessionMessagesToChat(sessionId: Long, toChatId: Long) {
         val messages = messageRepository.findAllBySessionIdOrderByCreatedAtAsc(sessionId)
         for (message in messages) {
-            copyMessage(message.user.chatId, message.messageId!!, toChatId, message.replyToMessageId)
+           val newMessageId = copyMessage(message.user.chatId, message.messageId!!, toChatId, message.replyToMessageId)
+            message.newMessageId = newMessageId?.toInt()
+            messageRepository.save(message)
         }
     }
     fun sendMessageToClient(operatorChatId: Long, message: Message) {
+        val userMessage = messageService.handleMessage(message, operatorChatId)
         val session = sessionRepository.findProcessingSessionsByOperatorId(operatorChatId)!!
         val clientChatId = session.client.chatId
         val replyToMessageId: Int? = message.replyToMessage?.messageId
-        copyMessage(operatorChatId, message.messageId, clientChatId,replyToMessageId)
+        val replyToClientMessageId: Int? = replyToMessageId?.let {
+                messageRepository.findByNewMessageId(it.toLong())?.messageId
+                    ?: messageRepository.findByMessageId(replyToMessageId.toLong())!!.newMessageId }
+        userMessage.newMessageId = copyMessage(operatorChatId, message.messageId, clientChatId,replyToClientMessageId)?.toInt()
+        messageRepository.save(userMessage)
     }
     fun sendMessageToOperator(clientChatId: Long, message: Message) {
         val session = sessionRepository.findProcessingSessionsByClientId(clientChatId)!!
         val operatorChatId = session.operator?.chatId
         val replyToMessageId: Int? = message.replyToMessage?.messageId
-        copyMessage(clientChatId, message.messageId, operatorChatId!!, replyToMessageId)
+        val replyToOperatorMessageId: Int? = replyToMessageId?.let {
+            messageRepository.findByNewMessageId(it.toLong())?.messageId
+                ?: messageRepository.findByMessageId(replyToMessageId.toLong())!!.newMessageId }
+        val newMessage = messageService.handleMessage(message, clientChatId)
+        val newMessageId =  copyMessage(clientChatId, message.messageId, operatorChatId!!, replyToOperatorMessageId)
+        newMessage.newMessageId = newMessageId?.toInt()
+        messageRepository.save(newMessage)
     }
 
     private var replyToMessageIdMap: MutableMap<Int, Int> = mutableMapOf()
-    fun copyMessage(fromChatId: Long, messageId: Int, toChatId: Long, replyToMessageId: Int?) {
+    fun copyMessage(fromChatId: Long, messageId: Int, toChatId: Long, replyToMessageId: Int?) : Long? {
         try {
             val copyMessage = CopyMessage().apply {
                 this.fromChatId = fromChatId.toString()
                 this.chatId = toChatId.toString()
                 this.messageId = messageId
                 if (replyToMessageId != null ) {
-                    this.replyToMessageId = replyToMessageIdMap[replyToMessageId]
+                    this.replyToMessageId = replyToMessageId
                 }
         }
           val newMessageId =  execute(copyMessage)
             replyToMessageIdMap[messageId] = newMessageId.messageId?.toInt()!!
+          return newMessageId.messageId
         } catch (e: TelegramApiException) {
             println("Message: ${e.message}")
         }
+        return null
+    }
+
+    fun handleEditMessage(update: Update?, role: Role){
+        val messageId = update?.editedMessage?.messageId
+        var chatId:Long? = update?.editedMessage?.chatId
+
+        if (role == Role.OPERATOR){
+            chatId = update?.editedMessage?.chatId.let {
+            sessionRepository.findSessionByChatIdAndStatus(it!!)?.client?.chatId
+           }
+        }else chatId = update?.editedMessage?.chatId.let {
+            sessionRepository.findSessionByChatIdAndStatus(it!!)?.operator?.chatId
+            }
+        val editMessageToSend = EditMessageText().apply {
+            if (messageId != null) {
+                this.messageId = messageRepository.findByMessageId(messageId.toLong())?.newMessageId
+            }
+            this.chatId = chatId.toString()
+            this.text = update?.editedMessage?.text!!
+        }
+        execute(editMessageToSend)
     }
 
     private fun sendStartWorkButton(chatId: Long) {

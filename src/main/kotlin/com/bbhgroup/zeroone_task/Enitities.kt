@@ -29,21 +29,22 @@ class UserEntity(
 
 @Entity(name = "messages")
 class MessagesEntity(
-        @ManyToOne
+    @ManyToOne
         val user: UserEntity,
-        val text: String? = null,
-        val fileId: String? = null,
-        val mediaUrl: String? = null,
-        val messageId: Int? = null,
-        val replyToMessageId: Int? = null,
-        val latitude: Double? = null,
-        val longitude: Double? = null,
-        @Enumerated(EnumType.STRING)
+    val text: String? = null,
+    val fileId: String? = null,
+    val mediaUrl: String? = null,
+    val messageId: Int? = null,
+    var newMessageId: Int? = null,
+    val replyToMessageId: Int? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    @Enumerated(EnumType.STRING)
         val messageType: MessageType,
-        @ManyToOne
+    @ManyToOne
         val session: Session,
 
-) : BaseEntity()
+    ) : BaseEntity()
 
 @Entity(name = "sessions")
 class Session(

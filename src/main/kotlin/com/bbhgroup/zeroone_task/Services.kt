@@ -46,8 +46,9 @@ interface MessageService {
     fun findAllByOperatorId(operatorId: Long): List<MessageSessionResponse>
     fun getFileUrl(fileId: String): String
     fun getFileSize(fileId: String): Long
-    fun handleMessage(message: Message, chatId: Long)
-    fun findAllBetweenDates(request: MessageDateBetweenDto): List<MessageSessionResponse>
+    fun handleMessage(message: Message, chatId: Long):MessagesEntity
+    fun findAllBetweenDates(request: MessageDateBetweenDto):List<MessageSessionResponse>
+
 }
 
 interface SessionService {
@@ -358,8 +359,7 @@ class MessageServiceImpl(
             MessageSessionResponse.toResponse(session, messageList)
         }.toList()
     }
-
-    override fun handleMessage(message: Message, chatId: Long) {
+    override fun handleMessage(message: Message, chatId: Long): MessagesEntity {
         val messageType = when {
             message.text != null -> MessageType.TEXT
             message.voice != null -> MessageType.VOICE
@@ -395,7 +395,7 @@ class MessageServiceImpl(
                     MessageType.VIDEO_NOTE,
                     MessageType.STICKER,
                     MessageType.GIF,
-                    MessageType.DOCUMENT,
+                    MessageType.DOCUMENT
             )
         }
                 ?.let { getFileUrl(it) }
@@ -409,25 +409,27 @@ class MessageServiceImpl(
                 this.text = "Yuborish mumkin bo'lgan file'ning maksimal hajmi 10 MB"
             }
             botService.execute(sendMessage)
-            return
+            throw UserBadRequestException()
         }
 
         val textMessage = message.text
         val replyMessageId = message.replyToMessage?.messageId
         val messageEntity = MessagesEntity(
-                user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!,
-                text = textMessage,
-                messageId = message.messageId,
-                replyToMessageId = replyMessageId,
-                fileId = fileId,
-                mediaUrl = mediaUrl,
-                messageType = messageType,
-                latitude = message.location?.latitude,
-                longitude = message.location?.longitude,
-                session = sessionRepository.findByChatIdAndIsActiveTrue(chatId)!!
+            user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!,
+            text = textMessage,
+            messageId = message.messageId,
+            replyToMessageId = replyMessageId,
+            fileId = fileId,
+            mediaUrl = mediaUrl,
+            messageType = messageType,
+            latitude = message.location?.latitude,
+            longitude = message.location?.longitude,
+            session = sessionRepository.findSessionByChatIdAndStatus(chatId)!!
+
         )
 
-        messageRepository.save(messageEntity)
+        val newMessage = messageRepository.save(messageEntity)
+        return newMessage
     }
 
     override fun getFileSize(fileId: String): Long {
