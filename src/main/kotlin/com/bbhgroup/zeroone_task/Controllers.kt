@@ -38,6 +38,9 @@ class UserController(val userService: UserService) {
     @GetMapping("{id}")
     fun getOne(@PathVariable id: Long) = userService.getOne(id)
 
+    @GetMapping("get-one-operator")
+    fun getOneOperator(@RequestParam id: Long) = userService.findOperatorById(id)
+
     @DeleteMapping("{id}")
     fun delete(@PathVariable id: Long) = userService.deleteOne(id)
 
@@ -49,6 +52,11 @@ class UserController(val userService: UserService) {
             pageable: Pageable
     ) = userService.getAll(role, startTime, endTime, pageable)
 
+    @GetMapping("get-all-by-status")
+    fun getAllOperatorByStatus(@RequestParam status: String, pageable: Pageable) = userService.findAllOperatorByStatus(status, pageable)
+
+    @GetMapping("get-all-by-rate")
+    fun getAllOperatorWithRate(pageable: Pageable)=userService.findAllOperatorWithRate(pageable)
     @PutMapping
     fun changeRole(@RequestParam id: Long, @RequestParam role: String) = userService.changeRole(id, role)
 

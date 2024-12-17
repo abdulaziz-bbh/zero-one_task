@@ -59,6 +59,14 @@ data class UserResponse(
     }
 }
 
+data class OperatorResponse(
+        val id: Long,
+        val fullName: String,
+        val phoneNumber: String,
+        val chatId: Long,
+        val avgRate: Double?
+)
+
 data class UserUpdateRequest(
     var fullName: String?,
     var phoneNumber: String?,
@@ -70,8 +78,7 @@ data class SessionCreateRequest(
     val operatorId: Long,
     val rate: Int,
     val commentForRate: String
-) {
-}
+)
 
 data class SessionResponse(
     val id: Long,
