@@ -59,6 +59,19 @@ class BotService(
                 user.run {
                     if (role == Role.USER) {
                         val session = sessionRepository.findProcessingSessionsByClientId(chatId)
+                        if (update.hasMessage() && update.message.text == "/changelang" && botSteps != BotSteps.SENDING_MESSAGES){
+                            sendLanguageButtons(chatId)
+                            botSteps = BotSteps.SELECT_LANGUAGE
+                            userRepository.save(user)
+                        }
+                        if (update.hasCallbackQuery() && botSteps == BotSteps.SELECT_LANGUAGE){
+                            language.clear()
+                            val lang: Languages = Languages.valueOf(update.callbackQuery.data.uppercase())
+                            language.add(lang)
+                            botSteps = BotSteps.START
+                            userRepository.save(user)
+                            sendConnectOperatorButton(chatId)
+                        }
                         if (update.hasCallbackQuery() && botSteps == BotSteps.END_CHAT){
                             selectRateForSession(chatId, update.callbackQuery.data.toInt())
                             deleteMessage(chatId, update.callbackQuery.message.messageId)
@@ -66,7 +79,7 @@ class BotService(
                         if (update.hasCallbackQuery() && botSteps == BotSteps.START) {
                             writeToOperator(update, chatId)
                         }
-                        if (update.hasMessage()&& botSteps == BotSteps.END_CHAT) {
+                        if (update.hasMessage() && botSteps == BotSteps.END_CHAT) {
                             sendConnectOperatorButton(chatId)
                         }
                         if (update.hasMessage() && botSteps == BotSteps.SENDING_MESSAGES && session == null) {
