@@ -327,7 +327,7 @@ class MessageServiceImpl(
 
         return sessionList.map { session ->
             val messageList = messageRepository.findAllBySessionIdAndDeletedFalseOrderByCreatedAtAsc(session.id!!)
-            MessageSessionResponse.toResponse(session, messageList)
+            MessageSessionResponse.toResponse(session, messageList, messageRepository)
         }.toList()
     }
 
@@ -337,7 +337,7 @@ class MessageServiceImpl(
         val messageList = messageRepository.findAllBySessionIdAndDeletedFalseOrderByCreatedAtAsc(sessionId)
         if (messageList.isEmpty()) throw EmptyListMException()
 
-        return MessageSessionResponse.toResponse(session, messageList)
+        return MessageSessionResponse.toResponse(session, messageList, messageRepository)
     }
 
     override fun findAllByClientId(clientId: Long): List<MessageSessionResponse> {
@@ -346,7 +346,7 @@ class MessageServiceImpl(
 
         return sessionList.map { session ->
             val messageList = messageRepository.findAllBySessionIdAndDeletedFalseOrderByCreatedAtAsc(session.id!!)
-            MessageSessionResponse.toResponse(session, messageList)
+            MessageSessionResponse.toResponse(session, messageList, messageRepository)
         }.toList()
     }
 
@@ -356,7 +356,7 @@ class MessageServiceImpl(
 
         return sessionList.map { session ->
             val messageList = messageRepository.findAllBySessionIdAndDeletedFalseOrderByCreatedAtAsc(session.id!!)
-            MessageSessionResponse.toResponse(session, messageList)
+            MessageSessionResponse.toResponse(session, messageList, messageRepository)
         }.toList()
     }
     override fun handleMessage(message: Message, chatId: Long): MessagesEntity {

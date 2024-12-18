@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Lazy
 import org.springframework.context.support.ResourceBundleMessageSource
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
+import org.telegram.telegrambots.meta.api.methods.BotApiMethod
 import org.telegram.telegrambots.meta.api.methods.CopyMessage
 import org.telegram.telegrambots.meta.api.methods.send.*
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
@@ -18,6 +19,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException
+import java.io.Serializable
 import java.util.*
 
 @Component
@@ -35,10 +37,10 @@ class BotService(
     private var languageCodes: MutableMap<Long, String> = mutableMapOf()
 
     @Value("\${bot.username}")
-    lateinit var username:String
+    lateinit var username: String
 
     @Value("\${bot.token}")
-    lateinit var token:String
+    lateinit var token: String
 
     override fun getBotUsername(): String = username
     override fun getBotToken(): String = token
@@ -55,16 +57,16 @@ class BotService(
 
         if (chatId != null) {
             if (userService.existsByChatId(chatId)) {
-                val user:UserEntity = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!
+                val user: UserEntity = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!
                 user.run {
                     if (role == Role.USER) {
                         val session = sessionRepository.findProcessingSessionsByClientId(chatId)
-                        if (update.hasMessage() && update.message.text == "/changelang" && botSteps != BotSteps.SENDING_MESSAGES){
+                        if (update.hasMessage() && update.message.text == "/changelang" && botSteps != BotSteps.SENDING_MESSAGES) {
                             sendLanguageButtons(chatId)
                             botSteps = BotSteps.SELECT_LANGUAGE
                             userRepository.save(user)
                         }
-                        if (update.hasCallbackQuery() && botSteps == BotSteps.SELECT_LANGUAGE){
+                        if (update.hasCallbackQuery() && botSteps == BotSteps.SELECT_LANGUAGE) {
                             language.clear()
                             val lang: Languages = Languages.valueOf(update.callbackQuery.data.uppercase())
                             language.add(lang)
@@ -72,7 +74,7 @@ class BotService(
                             userRepository.save(user)
                             sendConnectOperatorButton(chatId)
                         }
-                        if (update.hasCallbackQuery() && botSteps == BotSteps.END_CHAT){
+                        if (update.hasCallbackQuery() && botSteps == BotSteps.END_CHAT) {
                             selectRateForSession(chatId, update.callbackQuery.data.toInt())
                             deleteMessage(chatId, update.callbackQuery.message.messageId)
                         }
@@ -88,35 +90,43 @@ class BotService(
                         if (update.hasMessage() && botSteps == BotSteps.START) {
                             sendConnectOperatorButton(chatId)
                         }
-                        if (update.hasMessage() && botSteps == BotSteps.SENDING_MESSAGES && session != null){
+                        if (update.hasMessage() && botSteps == BotSteps.SENDING_MESSAGES && session != null) {
                             sendMessageToOperator(chatId, update.message)
                         }
-                        if (update.hasEditedMessage()){
+                        if (update.hasEditedMessage()) {
                             handleEditMessage(update, Role.USER)
                         }
                     }
                     if (role == Role.OPERATOR) {
-                        if (update.hasMessage() && update.message.text == "/start"){
+                        if (update.hasMessage() && update.message.text == "/start") {
                             sendStartWorkButton(chatId)
                             deleteMessage(chatId, update.message.messageId)
                         }
 
-                        if (update.hasCallbackQuery() && update.callbackQuery.data =="START_WORK") {
+                        if (update.hasCallbackQuery() && update.callbackQuery.data == "START_WORK") {
                             deleteMessage(chatId, update.callbackQuery.message.messageId)
                             sendPendingMessage(chatId)
                         }
-                        if (update.hasMessage() && update.message.text == getMessage(MessageKeys.END_CHAT.name, userService.getLanguages(chatId))){
+                        if (update.hasMessage() && update.message.text == getMessage(
+                                MessageKeys.END_CHAT.name,
+                                userService.getLanguages(chatId)
+                            )
+                        ) {
                             endChat(chatId)
                             deleteMessage(chatId, update.message.messageId)
                         }
-                        if (update.hasMessage() && update.message.text == getMessage(MessageKeys.END_WORK.name, userService.getLanguages(chatId))){
+                        if (update.hasMessage() && update.message.text == getMessage(
+                                MessageKeys.END_WORK.name,
+                                userService.getLanguages(chatId)
+                            )
+                        ) {
                             endWork(chatId)
                             deleteMessage(chatId, update.message.messageId)
                         }
                         if (update.hasMessage() && status == Status.BUSY) {
                             sendMessageToClient(chatId, update.message)
                         }
-                        if (update.hasEditedMessage()){
+                        if (update.hasEditedMessage()) {
                             handleEditMessage(update, Role.OPERATOR)
                         }
                     }
@@ -127,7 +137,7 @@ class BotService(
         }
     }
 
-    private fun registerUser(update: Update?){
+    private fun registerUser(update: Update?) {
         val chatId: Long?
         val name: String?
         val number: String?
@@ -149,23 +159,23 @@ class BotService(
             return
         }
 
-       if (update?.hasMessage() == true  && update.message.contact != null) {
-           val senderId = update.message.contact.userId
-           val fromId = update.message.from.id
-           if (senderId == fromId) {
-               chatId = update.message.chatId
-               number = update.message.contact.phoneNumber
-               name = update.message.contact.firstName
-               removeContactButton(chatId)
-               userService.saveUser(chatId, name, language!!.uppercase(), number)
-               sendConnectOperatorButton(chatId)
-               return
-           }else{
-               sendTextMessage(
-                   update.message.chatId,
-                   getMessage(MessageKeys.SHARE_OTHER_CONTACT.name, languageCodes[update.message.chatId]!!)
-               )
-           }
+        if (update?.hasMessage() == true && update.message.contact != null) {
+            val senderId = update.message.contact.userId
+            val fromId = update.message.from.id
+            if (senderId == fromId) {
+                chatId = update.message.chatId
+                number = update.message.contact.phoneNumber
+                name = update.message.contact.firstName
+                removeContactButton(chatId)
+                userService.saveUser(chatId, name, language!!.uppercase(), number)
+                sendConnectOperatorButton(chatId)
+                return
+            } else {
+                sendTextMessage(
+                    update.message.chatId,
+                    getMessage(MessageKeys.SHARE_OTHER_CONTACT.name, languageCodes[update.message.chatId]!!)
+                )
+            }
         }
     }
 
@@ -183,7 +193,7 @@ class BotService(
                 )
             }
         }
-        execute(message)
+        executeMessage(message, chatId)
     }
 
     private fun sendContactRequest(chatId: Long) {
@@ -192,8 +202,36 @@ class BotService(
             text = getMessage(MessageKeys.SHARE_CONTACT.name, languageCodes[chatId]!!)
             replyMarkup = createContactButton(chatId)
         }
-        execute(message)
+        executeMessage(message, chatId)
     }
+
+    fun <T : Serializable?, Method : BotApiMethod<T>?> executeMessage(method: Method?, chatId: Long?) {
+        try {
+            execute(method)
+        } catch (e: TelegramApiException) {
+            var message: String = ""
+            if (e.message?.contains("403: Forbidden") == true) {
+                println("User has blocked the bot or the bot is restricted.")
+                if (chatId != null) {
+                    val user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)
+                    if (user != null) {
+                        user.userStatus = UserStatus.BLOCKED
+                        userRepository.save(user)
+                    }
+                }
+                message = getMessage(MessageKeys.USER_BLOCKED_BOT.name, languageCodes[chatId]!!)
+            } else {
+                message = e.message.toString()
+            }
+            val errorMessage = SendMessage().apply {
+                this.chatId = chatId.toString()
+                text = message
+                replyMarkup = createContactButton(chatId!!)
+            }
+            execute(errorMessage)
+        }
+    }
+
 
     private fun createContactButton(chatId: Long): ReplyKeyboardMarkup {
         val row = KeyboardRow().apply {
@@ -217,7 +255,7 @@ class BotService(
                 removeKeyboard = true
             }
         }
-        execute(message)
+        executeMessage(message, chatId)
     }
 
     private fun getMessage(code: String, local: String): String {
@@ -226,16 +264,16 @@ class BotService(
 
     private fun writeToOperator(update: Update, chatId: Long) {
         val user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!
-       if (user.botSteps == BotSteps.START && update.callbackQuery.data == "CONNECT_OPERATOR"){
-           deleteMessage(chatId, update.callbackQuery.message.messageId)
-           startOperatorCommunication(chatId)
-           user.botSteps = BotSteps.SENDING_MESSAGES
-           userRepository.save(user)
-       }else if (user.botSteps == BotSteps.SENDING_MESSAGES){
-           if (update.hasMessage()) {
-               messageService.handleMessage(update.message, chatId)
-           }
-       }
+        if (user.botSteps == BotSteps.START && update.callbackQuery.data == "CONNECT_OPERATOR") {
+            deleteMessage(chatId, update.callbackQuery.message.messageId)
+            startOperatorCommunication(chatId)
+            user.botSteps = BotSteps.SENDING_MESSAGES
+            userRepository.save(user)
+        } else if (user.botSteps == BotSteps.SENDING_MESSAGES) {
+            if (update.hasMessage()) {
+                messageService.handleMessage(update.message, chatId)
+            }
+        }
     }
 
     private fun startOperatorCommunication(chatId: Long) {
@@ -246,21 +284,22 @@ class BotService(
         val connectMessage = SendMessage().apply {
             this.chatId = chatId.toString()
             text = if (languageCodes[chatId] == null) {
-                getMessage(MessageKeys.WRITE_TO_OPERATOR.name,userService.getLanguages(chatId))
-            }else {
+                getMessage(MessageKeys.WRITE_TO_OPERATOR.name, userService.getLanguages(chatId))
+            } else {
                 getMessage(MessageKeys.WRITE_TO_OPERATOR.name, languageCodes[chatId]!!)
-            }        }
+            }
+        }
         sessionRepository.findSessionByChatIdAndStatus(client.chatId)
             ?: createSessionForClient(client)
-        execute(connectMessage)
+        executeMessage(connectMessage, chatId)
     }
 
     private fun sendConnectOperatorButton(chatId: Long) {
         val message = SendMessage().apply {
             this.chatId = chatId.toString()
             text = if (languageCodes[chatId] == null) {
-                getMessage(MessageKeys.TEXT_CONNECT_BUTTON_TO_OPERATOR.name,userService.getLanguages(chatId))
-            }else {
+                getMessage(MessageKeys.TEXT_CONNECT_BUTTON_TO_OPERATOR.name, userService.getLanguages(chatId))
+            } else {
                 getMessage(MessageKeys.TEXT_CONNECT_BUTTON_TO_OPERATOR.name, languageCodes[chatId]!!)
             }
             replyMarkup = InlineKeyboardMarkup().apply {
@@ -268,17 +307,21 @@ class BotService(
                     listOf(
                         InlineKeyboardButton(
                             if (languageCodes[chatId] == null) {
-                                getMessage(MessageKeys.CONNECT_BUTTON_TO_OPERATOR.name,userService.getLanguages(chatId))
-                            }else {
+                                getMessage(
+                                    MessageKeys.CONNECT_BUTTON_TO_OPERATOR.name,
+                                    userService.getLanguages(chatId)
+                                )
+                            } else {
                                 getMessage(MessageKeys.CONNECT_BUTTON_TO_OPERATOR.name, languageCodes[chatId]!!)
-                            }).apply {
+                            }
+                        ).apply {
                             callbackData = "CONNECT_OPERATOR"
                         }
                     )
                 )
             }
         }
-        execute(message)
+        executeMessage(message, chatId)
     }
 
     fun createSessionForClient(client: UserEntity): Session {
@@ -289,13 +332,14 @@ class BotService(
         )
         return sessionRepository.save(session)
     }
-    private fun sendPendingMessage(operatorChatId: Long){
+
+    private fun sendPendingMessage(operatorChatId: Long) {
         val session = sessionService.getFirPending()
         val operator = userRepository.findUserEntityByChatIdAndDeletedFalse(operatorChatId)!!
         val oLang = operator.language
         val cLang = session?.client?.language
         val isMatch = cLang?.let { oLang.containsAll(it) }
-        if (session != null && isMatch!!){
+        if (session != null && isMatch!!) {
             operator.status = Status.BUSY
             session.status = SessionStatus.PROCESSING
             session.operator = operator
@@ -303,22 +347,26 @@ class BotService(
             userRepository.save(operator)
             sendEndChatOrWorkButton(operator.chatId, session.client.chatId)
             sendSessionMessagesToChat(session.id!!, operatorChatId)
-        }else{
-            sendTextMessage(operatorChatId,getMessage(
-                MessageKeys.NOT_FOUND_PENDING_CLIENT.name,
-                userService.getLanguages(operatorChatId)))
+        } else {
+            sendTextMessage(
+                operatorChatId, getMessage(
+                    MessageKeys.NOT_FOUND_PENDING_CLIENT.name,
+                    userService.getLanguages(operatorChatId)
+                )
+            )
             sendStartWorkButton(operatorChatId)
         }
     }
 
-    private fun sendEndChatOrWorkButton(operatorChatId: Long, clientChatId: Long){
+    private fun sendEndChatOrWorkButton(operatorChatId: Long, clientChatId: Long) {
         val sendMessage = SendMessage().apply {
             this.chatId = operatorChatId.toString()
             this.replyMarkup = createEndChatButtons(operatorChatId)
             this.text = "client: ${userRepository.findUserEntityByChatIdAndDeletedFalse(clientChatId)?.fullName!!}"
         }
-        execute(sendMessage)
+        executeMessage(sendMessage, clientChatId)
     }
+
     private fun createEndChatButtons(chatId: Long): ReplyKeyboardMarkup {
         val row = KeyboardRow().apply {
             add(KeyboardButton(getMessage(MessageKeys.END_CHAT.name, userService.getLanguages(chatId))))
@@ -334,66 +382,71 @@ class BotService(
     fun sendSessionMessagesToChat(sessionId: Long, toChatId: Long) {
         val messages = messageRepository.findAllBySessionIdOrderByCreatedAtAsc(sessionId)
         for (message in messages) {
-           val newMessageId = copyMessage(message.user.chatId, message.messageId!!, toChatId, message.replyToMessageId)
+            val newMessageId = copyMessage(message.user.chatId, message.messageId!!, toChatId, message.replyToMessageId)
             message.newMessageId = newMessageId?.toInt()
             messageRepository.save(message)
         }
     }
+
     fun sendMessageToClient(operatorChatId: Long, message: Message) {
         val userMessage = messageService.handleMessage(message, operatorChatId)
         val session = sessionRepository.findProcessingSessionsByOperatorId(operatorChatId)!!
         val clientChatId = session.client.chatId
         val replyToMessageId: Int? = message.replyToMessage?.messageId
         val replyToClientMessageId: Int? = replyToMessageId?.let {
-                messageRepository.findByNewMessageId(it.toLong())?.messageId
-                    ?: messageRepository.findByMessageId(replyToMessageId.toLong())!!.newMessageId }
-        userMessage.newMessageId = copyMessage(operatorChatId, message.messageId, clientChatId,replyToClientMessageId)?.toInt()
+            messageRepository.findByNewMessageId(it.toLong())?.messageId
+                ?: messageRepository.findByMessageId(replyToMessageId.toLong())!!.newMessageId
+        }
+        userMessage.newMessageId =
+            copyMessage(operatorChatId, message.messageId, clientChatId, replyToClientMessageId)?.toInt()
         messageRepository.save(userMessage)
     }
+
     fun sendMessageToOperator(clientChatId: Long, message: Message) {
         val session = sessionRepository.findProcessingSessionsByClientId(clientChatId)!!
         val operatorChatId = session.operator?.chatId
         val replyToMessageId: Int? = message.replyToMessage?.messageId
         val replyToOperatorMessageId: Int? = replyToMessageId?.let {
             messageRepository.findByNewMessageId(it.toLong())?.messageId
-                ?: messageRepository.findByMessageId(replyToMessageId.toLong())!!.newMessageId }
+                ?: messageRepository.findByMessageId(replyToMessageId.toLong())!!.newMessageId
+        }
         val newMessage = messageService.handleMessage(message, clientChatId)
-        val newMessageId =  copyMessage(clientChatId, message.messageId, operatorChatId!!, replyToOperatorMessageId)
+        val newMessageId = copyMessage(clientChatId, message.messageId, operatorChatId!!, replyToOperatorMessageId)
         newMessage.newMessageId = newMessageId?.toInt()
         messageRepository.save(newMessage)
     }
 
     private var replyToMessageIdMap: MutableMap<Int, Int> = mutableMapOf()
-    fun copyMessage(fromChatId: Long, messageId: Int, toChatId: Long, replyToMessageId: Int?) : Long? {
+    fun copyMessage(fromChatId: Long, messageId: Int, toChatId: Long, replyToMessageId: Int?): Long? {
         try {
             val copyMessage = CopyMessage().apply {
                 this.fromChatId = fromChatId.toString()
                 this.chatId = toChatId.toString()
                 this.messageId = messageId
-                if (replyToMessageId != null ) {
+                if (replyToMessageId != null) {
                     this.replyToMessageId = replyToMessageId
                 }
-        }
-          val newMessageId =  execute(copyMessage)
+            }
+            val newMessageId = execute(copyMessage)
             replyToMessageIdMap[messageId] = newMessageId.messageId?.toInt()!!
-          return newMessageId.messageId
+            return newMessageId.messageId
         } catch (e: TelegramApiException) {
             println("Message: ${e.message}")
         }
         return null
     }
 
-    fun handleEditMessage(update: Update?, role: Role){
+    fun handleEditMessage(update: Update?, role: Role) {
         val messageId = update?.editedMessage?.messageId
-        var chatId:Long? = update?.editedMessage?.chatId
+        var chatId: Long? = update?.editedMessage?.chatId
 
-        if (role == Role.OPERATOR){
+        if (role == Role.OPERATOR) {
             chatId = update?.editedMessage?.chatId.let {
-            sessionRepository.findSessionByChatIdAndStatus(it!!)?.client?.chatId
-           }
-        }else chatId = update?.editedMessage?.chatId.let {
-            sessionRepository.findSessionByChatIdAndStatus(it!!)?.operator?.chatId
+                sessionRepository.findSessionByChatIdAndStatus(it!!)?.client?.chatId
             }
+        } else chatId = update?.editedMessage?.chatId.let {
+            sessionRepository.findSessionByChatIdAndStatus(it!!)?.operator?.chatId
+        }
         val editMessageToSend = EditMessageText().apply {
             if (messageId != null) {
                 this.messageId = messageRepository.findByMessageId(messageId.toLong())?.newMessageId
@@ -401,28 +454,29 @@ class BotService(
             this.chatId = chatId.toString()
             this.text = update?.editedMessage?.text!!
         }
-        execute(editMessageToSend)
+        executeMessage(editMessageToSend, chatId)
     }
 
     private fun sendStartWorkButton(chatId: Long) {
         val message = SendMessage().apply {
             this.chatId = chatId.toString()
-            text = getMessage(MessageKeys.START_WORK.name,userService.getLanguages(chatId))
+            text = getMessage(MessageKeys.START_WORK.name, userService.getLanguages(chatId))
             replyMarkup = InlineKeyboardMarkup().apply {
                 keyboard = listOf(
                     listOf(
                         InlineKeyboardButton(
-                            getMessage(MessageKeys.START_WORK_BUTTON.name, userService.getLanguages(chatId))).apply {
+                            getMessage(MessageKeys.START_WORK_BUTTON.name, userService.getLanguages(chatId))
+                        ).apply {
                             callbackData = "START_WORK"
                         }
                     )
                 )
             }
         }
-        execute(message)
+        executeMessage(message, chatId)
     }
 
-    private fun endChat(operatorChatId: Long){
+    private fun endChat(operatorChatId: Long) {
         val operator = userRepository.findUserEntityByChatIdAndDeletedFalse(operatorChatId)!!
         operator.status = Status.FREE
         userRepository.save(operator)
@@ -436,7 +490,7 @@ class BotService(
         sendPendingMessage(operatorChatId)
     }
 
-    private fun endWork(operatorChatId: Long){
+    private fun endWork(operatorChatId: Long) {
         val operator = userRepository.findUserEntityByChatIdAndDeletedFalse(operatorChatId)!!
         operator.status = Status.NOT_WORKING
         userRepository.save(operator)
@@ -474,7 +528,7 @@ class BotService(
                 )
             }
         }
-        execute(message)
+        executeMessage(message, chatId)
     }
 
     private fun deleteMessage(chatId: Long, messageId: Int) {
@@ -482,7 +536,7 @@ class BotService(
             this.messageId = messageId
             this.chatId = chatId.toString()
         }
-        execute(deletedMessage)
+        executeMessage(deletedMessage, chatId)
     }
 
     private fun sendTextMessage(chatId: Long, messageText: String) {
@@ -490,6 +544,6 @@ class BotService(
             this.chatId = chatId.toString()
             this.text = messageText
         }
-        execute(message)
+        executeMessage(message, chatId)
     }
 }

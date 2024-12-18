@@ -10,7 +10,11 @@ data class MessageSessionResponse(
     val messageItems: List<MessageSessionItemResponse>,
 ) {
     companion object {
-        fun toResponse(session: Session, messageList: List<MessagesEntity>): MessageSessionResponse {
+        fun toResponse(
+            session: Session,
+            messageList: List<MessagesEntity>,
+            messageRepository: MessageRepository
+        ): MessageSessionResponse {
             return MessageSessionResponse(
                 session.id,
                 session.operator!!.id,
@@ -18,7 +22,13 @@ data class MessageSessionResponse(
                 session.client.id,
                 session.client.phoneNumber,
                 session.client.language.first(),
-                messageList.map { MessageSessionItemResponse.toResponse(session, it) }.toList()
+                messageList.map {
+                    var replyM: MessagesEntity? = null
+                    it.replyToMessageId?.let { messageId ->
+                        replyM = messageRepository.findByNewMessageId(messageId.toLong())
+                    }
+                    MessageSessionItemResponse.toResponse(session, it, replyM)
+                }.toList()
             )
         }
     }
@@ -30,6 +40,11 @@ data class ReplyMessageResponse(
     val fileId: String?,
     val text: String?,
     val messageType: MessageType,
+    val messageId: Int? = null,
+    var newMessageId: Int? = null,
+    val mediaUrl: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
 ) {
     companion object {
         fun toResponse(message: MessagesEntity): ReplyMessageResponse {
@@ -39,6 +54,11 @@ data class ReplyMessageResponse(
                 message.fileId,
                 message.text,
                 message.messageType,
+                message.messageId,
+                message.newMessageId,
+                message.mediaUrl,
+                message.latitude,
+                message.longitude
             )
         }
     }
@@ -51,10 +71,19 @@ data class MessageSessionItemResponse(
     val text: String?,
     val messageType: MessageType,
     val isOperatorMessage: Boolean,
-    val replyMessage:Int? = null,
+    val replyMessage: ReplyMessageResponse? = null,
+    val messageId: Int? = null,
+    var newMessageId: Int? = null,
+    val mediaUrl: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
 ) {
     companion object {
-        fun toResponse(session: Session, message: MessagesEntity): MessageSessionItemResponse {
+        fun toResponse(
+            session: Session,
+            message: MessagesEntity,
+            replyMessage: MessagesEntity?
+        ): MessageSessionItemResponse {
             return MessageSessionItemResponse(
                 message.id,
                 message.createdAt.format("dd.MM.yyyy HH:mm:ss"),
@@ -62,7 +91,14 @@ data class MessageSessionItemResponse(
                 message.text,
                 message.messageType,
                 session.operator!!.id == message.user.id,
-                message.replyToMessageId
+                replyMessage?.let {
+                    ReplyMessageResponse.toResponse(it)
+                },
+                message.messageId,
+                message.newMessageId,
+                message.mediaUrl,
+                message.latitude,
+                message.longitude
             )
         }
     }

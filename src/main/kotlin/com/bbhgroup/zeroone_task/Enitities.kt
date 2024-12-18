@@ -24,7 +24,8 @@ class UserEntity(
         @Enumerated(EnumType.STRING)
         var language: MutableSet<Languages> = mutableSetOf(),
         @Enumerated(EnumType.STRING) var status: Status? = null,
-        @Enumerated(EnumType.STRING) var botSteps: BotSteps? = BotSteps.START
+        @Enumerated(EnumType.STRING) var botSteps: BotSteps? = BotSteps.START,
+        @Enumerated(EnumType.STRING) var userStatus: UserStatus? = UserStatus.ACTIVE
 ) : BaseEntity()
 
 @Entity(name = "messages")

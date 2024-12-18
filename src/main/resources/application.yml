@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/operator_bot
-    password: postgres
-    username: postgres
+    url: jdbc:postgresql://localhost:5432/zero_one
+    password: Zer00ne!@
+    username: ZeroOne
   jpa:
     hibernate:
       ddl-auto: update

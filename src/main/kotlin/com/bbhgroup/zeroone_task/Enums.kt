@@ -68,7 +68,8 @@ enum class MessageKeys{
     END_WORK,
     END_CHAT,
     NOT_FOUND_PENDING_CLIENT,
-    SEND_RATE_VALUE
+    SEND_RATE_VALUE,
+    USER_BLOCKED_BOT
 }
 
 enum class MessageType{
@@ -87,4 +88,7 @@ enum class MessageType{
 }
 enum class Status{
     BUSY, FREE, NOT_WORKING
+}
+enum class UserStatus{
+    ACTIVE, BLOCKED
 }

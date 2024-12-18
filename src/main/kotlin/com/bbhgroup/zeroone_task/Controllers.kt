@@ -54,7 +54,7 @@ class StatisticsController(private val service: StatisticsService) {
 
 }
 
-
+@RestController
 @RequestMapping("api/v1/message")
 class MessageController(private val messageService: MessageService) {
     @GetMapping("/findBySession/{sessionId}")
