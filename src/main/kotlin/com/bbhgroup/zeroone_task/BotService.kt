@@ -250,8 +250,8 @@ class BotService(
             }else {
                 getMessage(MessageKeys.WRITE_TO_OPERATOR.name, languageCodes[chatId]!!)
             }        }
-        sessionRepository.findSessionByChatIdAndStatus(client.chatId)
-            ?: createSessionForClient(client)
+        val session = sessionRepository.findSessionByChatIdAndStatus(chatId)
+        if (session==null) createSessionForClient(client)
         execute(connectMessage)
     }
 
