@@ -415,21 +415,20 @@ class MessageServiceImpl(
         val textMessage = message.text
         val replyMessageId = message.replyToMessage?.messageId
         val messageEntity = MessagesEntity(
-            user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!,
-            text = textMessage,
-            messageId = message.messageId,
-            replyToMessageId = replyMessageId,
-            fileId = fileId,
-            mediaUrl = mediaUrl,
-            messageType = messageType,
-            latitude = message.location?.latitude,
-            longitude = message.location?.longitude,
-            session = sessionRepository.findSessionByChatIdAndStatus(chatId)!!
+                user = userRepository.findUserEntityByChatIdAndDeletedFalse(chatId)!!,
+                text = textMessage,
+                messageId = message.messageId,
+                replyToMessageId = replyMessageId,
+                fileId = fileId,
+                mediaUrl = mediaUrl,
+                messageType = messageType,
+                latitude = message.location?.latitude,
+                longitude = message.location?.longitude,
+                session = sessionRepository.findSessionByChatIdAndStatus(chatId)!!
 
         )
 
-        val newMessage = messageRepository.save(messageEntity)
-        return newMessage
+        return messageRepository.save(messageEntity)
     }
 
     override fun getFileSize(fileId: String): Long {
@@ -560,7 +559,7 @@ class StatisticsServiceImpl(
     override fun getTopRatedOperators(lastMonth: Boolean, limit: Int): List<TopRatedOperatorResponse> {
         val now = LocalDateTime.now()
         val startDate = if (lastMonth) now.minusMonths(1) else LocalDateTime.MIN
-        val sessions = sessionRepository.findSessionsByCreatedAtBetween(startDate, now)
+        val sessions = sessionRepository.findAllSessionsByCreatedAtBetween(startDate, now)
 
         val operatorRatings = sessions.filter { it.operator != null }
             .groupBy { it.operator!! }
