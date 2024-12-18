@@ -188,7 +188,7 @@ interface SessionRepository : BaseRepository<Session> {
 
 
     @Query("select s from sessions s where s.createdAt between :startDate and :endDate and s.deleted = false")
-    fun findSessionsByCreatedAtBetween(
+    fun findAllSessionsByCreatedAtBetween(
         @Param("startDate") startDate: LocalDateTime,
         @Param("endDate") endDate: LocalDateTime
     ): List<Session>
@@ -203,6 +203,7 @@ interface SessionRepository : BaseRepository<Session> {
   
     fun findByOperatorId(operatorId: Long): List<Session>
 
+    @Query("select s from sessions s where s.createdAt between :startDate and :endDate and s.deleted = false")
     fun findSessionByCreatedAtBetween(startTime: LocalDateTime, endTime: LocalDateTime, pageable: Pageable): Page<Session>
 
     @Query("""
