@@ -168,7 +168,7 @@ interface SessionRepository : BaseRepository<Session> {
 
 
     @Query("""
-        select s from  sessions s where s.client.chatId = :chatId and s.status = 'PENDING' or s.status = 'PROCESSING'
+        select s from  sessions s where s.client.chatId = :chatId and s.status = 'PENDING' or s.status = 'PROCESSING' order by s.createdAt desc limit 1
     """)
     fun findSessionByChatIdAndStatus(chatId: Long): Session?
 
