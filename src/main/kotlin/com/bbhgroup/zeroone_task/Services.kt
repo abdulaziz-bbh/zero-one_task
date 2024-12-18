@@ -63,10 +63,8 @@ interface SessionService {
     fun getFirPending(): Session?
 }
 
-interface StatisticsService {
-    fun getTotalSessions(): TotalSessionsResponse
-    fun getOperatorSessionStatistics(operatorId: Long): OperatorSessionStatisticsResponse
-    fun getDetailedRatings(): DetailedRatingResponse
+interface StatisticsService {     
+    fun getOperatorSessionStatistics(operatorId: Long): OperatorSessionStatisticsResponse     
     fun getUserStatistics(): List<UserStatisticsResponse>
     fun getTopRatedOperators(lastMonth: Boolean = true, limit: Int = 10): List<TopRatedOperatorResponse>
 
@@ -524,13 +522,7 @@ class StatisticsServiceImpl(
     private val statisticsMapper: StatisticsMapper
 ) : StatisticsService {
 
-
-    override fun getTotalSessions(): TotalSessionsResponse {
-        val totalSessions = sessionRepository.count()
-        val totalActiveSessions = sessionRepository.countByIsActiveTrue()
-        return statisticsMapper.toTotalSessionsResponse(totalSessions, totalActiveSessions)
-    }
-
+ 
     override fun getOperatorSessionStatistics(operatorId: Long): OperatorSessionStatisticsResponse {
         val operator = userRepository.findByIdAndRoleAndDeletedFalse(operatorId, Role.OPERATOR)
             ?: throw UserNotFoundException()
@@ -541,12 +533,7 @@ class StatisticsServiceImpl(
             sessions = sessions
         )
     }
-
-
-    override fun getDetailedRatings(): DetailedRatingResponse {
-        val allSessions = sessionRepository.findAll()
-        return statisticsMapper.toDetailedRatingResponse(allSessions)
-    }
+ 
 
     override fun getUserStatistics(): List<UserStatisticsResponse> {
         val users = userRepository.findAll()

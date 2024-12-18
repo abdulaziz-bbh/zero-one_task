@@ -19,18 +19,10 @@ class ExceptionHandler(private val errorMessageSource: ResourceBundleMessageSour
 @RestController
 @RequestMapping("/api/statistics")
 class StatisticsController(private val service: StatisticsService) {
-
-    @GetMapping("/total-sessions")
-    fun getTotalSessions() = service.getTotalSessions()
-
-
+ 
     @GetMapping("/operator-sessions/{operatorId}")
     fun getOperatorSessionStatistics(@PathVariable operatorId: Long) =
         service.getOperatorSessionStatistics(operatorId)
-
-
-    @GetMapping("/detailed-ratings")
-    fun getDetailedRatings() = service.getDetailedRatings()
 
 
     @GetMapping("/user-statistics")
